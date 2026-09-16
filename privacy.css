@@ -1,0 +1,4 @@
+main{max-width:800px;margin:0 auto;padding:36px 24px 60px;line-height:1.75;overflow-wrap:anywhere}
+h1{margin-bottom:16px}h2{margin-top:30px;margin-bottom:12px}p+p{margin-top:16px}
+main a{color:var(--green);text-decoration:underline;text-underline-offset:3px}.back{display:inline-block;margin-top:28px;min-height:44px}
+.topbar{max-width:800px;margin:auto;padding:24px;min-height:80px}.brand img{display:block}

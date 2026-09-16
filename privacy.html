@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>Privacidad | DEX</title>
+  <link rel="icon" href="./icon.png">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./privacy.css">
+</head>
+<body>
+  <header class="topbar"><a class="brand" href="./"><img src="./icon.png" width="32" height="32" alt="">DEX<span class="brand-dot">.</span></a></header>
+  <main>
+    <h1>Pol&iacute;tica de privacidad</h1>
+    <p class="muted">Actualizada el 16 de septiembre de 2026</p>
+    <p>DEX es una aplicaci&oacute;n de seguimiento patrimonial para uso personal. La interfaz p&uacute;blica no contiene estados de cuenta, saldos ni credenciales del propietario.</p>
+    <h2>Datos y finalidad</h2>
+    <p>Con autorizaci&oacute;n del usuario, el importador accede a Gmail en modo de solo lectura para localizar mensajes y documentos financieros seleccionados. Extrae saldos y movimientos para el registro patrimonial. No env&iacute;a, elimina ni modifica mensajes.</p>
+    <p>DEX procesa cuentas, posiciones, saldos, movimientos, historial, salario utilizado para proyecciones y ajustes personales. El portal web solicita lectura de Google Sheets para mostrar el resumen del archivo privado indicado por el usuario. Los permisos solicitados por Google pueden abarcar otros archivos accesibles, pero el portal consulta &uacute;nicamente el archivo configurado.</p>
+    <h2>Almacenamiento y acceso</h2>
+    <p>Los datos del importador se almacenan cifrados localmente, fuera del c&oacute;digo fuente. El Sheets privado contiene registros y res&uacute;menes, adem&aacute;s de una copia de recuperaci&oacute;n cifrada. Las claves se mantienen separadas del respaldo. Los datos est&aacute;n sujetos a los permisos del archivo de Google.</p>
+    <p>El navegador guarda preferencias y los identificadores de conexi&oacute;n, no el resumen financiero. El token del portal permanece en memoria durante la sesi&oacute;n; se descarta al recargar, cerrar sesi&oacute;n o expirar. La cach&eacute; de DEX guarda recursos de interfaz, no respuestas financieras.</p>
+    <p>Las credenciales del importador permanecen en el almac&eacute;n seguro local o en los secretos del repositorio privado cuando el usuario las configura para ejecuci&oacute;n alojada. Los diagn&oacute;sticos alojados usan almacenamiento temporal y no publican datos financieros en logs o artifacts.</p>
+    <h2>Proveedores y uso limitado</h2>
+    <p>Google proporciona OAuth, Gmail y Sheets; GitHub aloja la interfaz y las ejecuciones autorizadas. Sus servicios pueden registrar metadatos t&eacute;cnicos seg&uacute;n sus propias pol&iacute;ticas. Las consultas p&uacute;blicas de cotizaciones no env&iacute;an saldos ni documentos a los proveedores de precios.</p>
+    <p>DEX no vende datos de Google, no los usa para publicidad ni para entrenar modelos de inteligencia artificial. Su uso y transferencia de informaci&oacute;n recibida de las API de Google se ajustan a la <a href="https://developers.google.com/terms/api-services-user-data-policy">Pol&iacute;tica de Datos de Usuarios de los Servicios de API de Google</a>, incluidos los requisitos de Uso Limitado.</p>
+    <h2>Control y conservaci&oacute;n</h2>
+    <p>El usuario puede revocar el acceso desde <a href="https://myaccount.google.com/connections">las conexiones de su cuenta Google</a>, cerrar la sesi&oacute;n del portal y olvidar sus ajustes de conexi&oacute;n. Revocar el acceso detiene nuevas lecturas, pero no elimina copias existentes.</p>
+    <p>Los registros y respaldos se conservan hasta que el propietario los elimina de su almacenamiento local y de Google Sheets. Para retirarlos por completo, debe revisar tambi&eacute;n la papelera e historial disponibles en Google y eliminar las credenciales configuradas en GitHub. No hay borrado remoto autom&aacute;tico desde el portal.</p>
+    <h2>Contacto</h2>
+    <p>Las consultas sobre privacidad pueden dirigirse al correo de asistencia mostrado en la pantalla de consentimiento de Google. No publiques credenciales, documentos ni datos financieros en incidencias p&uacute;blicas o chats.</p>
+    <a class="back" href="./">Volver a DEX</a>
+  </main>
+</body>
+</html>
