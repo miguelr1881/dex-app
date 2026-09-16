@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es" data-hosted="true">
+<head>
+  <meta charset="utf-8">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; img-src 'self' https://*.googleusercontent.com; connect-src 'self' https://sheets.googleapis.com https://accounts.google.com/gsi/ https://api.coinbase.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f8fa">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="DEX">
+  <meta name="color-scheme" content="light">
+  <title>DEX</title>
+  <link rel="icon" href="./icon.png" type="image/png">
+  <link rel="apple-touch-icon" href="./icon.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./portal.css">
+  <script src="./lucide.js" defer></script>
+  <script src="./i18n.js" defer></script>
+  <script src="./sheets-reader.js" defer></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="./portal.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Ir al contenido</a>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="#resumen" aria-label="DEX, resumen"><img src="./icon.png" width="34" height="34" alt=""><span>DEX<span class="brand-dot">.</span></span></a>
+      <span class="desktop-caption">PERSONAL FINANCE</span>
+      <div class="top-actions">
+        <span id="mode-badge" class="mode-badge">LOCAL</span>
+        <button class="icon-button" id="privacy" aria-label="Mostrar importes" aria-pressed="true" title="Mostrar importes"><i data-lucide="eye-off"></i></button>
+        <button class="icon-button" id="refresh" aria-label="Actualizar resumen" title="Actualizar resumen"><i data-lucide="refresh-cw"></i></button>
+      </div>
+    </header>
+    <nav class="navigation" aria-label="Navegaci&#243;n principal">
+      <a href="#resumen" data-view="resumen" aria-current="page"><i data-lucide="layout-dashboard"></i><span>Resumen</span></a>
+      <a href="#rendimiento" data-view="rendimiento"><i data-lucide="chart-no-axes-combined"></i><span>Rendimiento</span></a>
+      <a href="#cuentas" data-view="cuentas"><i data-lucide="wallet-cards"></i><span>Cuentas</span></a>
+      <a href="#ajustes" data-view="ajustes"><i data-lucide="sliders-horizontal"></i><span>Ajustes</span></a>
+      <span class="nav-foot">DEX <span data-version>0.1.0</span><br>SOLO LECTURA</span>
+    </nav>
+    <main id="main" tabindex="-1">
+      <div id="banner" class="notice" role="status" hidden></div>
+      <section id="portal-login" class="settings-group" hidden>
+        <h1>DEX</h1>
+        <form id="google-form" class="adjustment-form">
+          <label>Cliente web de Google<input id="google-client" required autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+          <label>ID del archivo de Sheets<input id="google-sheet" required autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+          <p id="portal-error" class="form-error" role="alert" hidden></p>
+          <div class="form-actions"><button id="google-connect" class="primary-action" type="submit">Continuar con Google</button></div>
+        </form>
+      </section>
+      <section id="portal-session" class="settings-group" hidden><div class="section-heading"><span class="subtle">Sheets privado</span><button id="google-disconnect" class="text-action" type="button">Cerrar sesi&#243;n</button></div><p id="portal-date" class="subtle"></p><p class="subtle">Lectura remota. Edita salario y restas en la app local.</p><button id="google-forget" class="text-action" type="button">Olvidar conexi&#243;n</button></section>
+      <section id="resumen" class="view" aria-labelledby="summary-heading">
+        <div class="page-heading"><h1 id="summary-heading">Patrimonio</h1><button class="icon-button" id="coverage-open" aria-label="Datos y tipo de cambio" title="Datos y tipo de cambio"><i data-lucide="info"></i></button></div>
+        <div class="summary-grid">
+          <section class="balance-panel" aria-label="Total del patrimonio">
+            <div class="balance-top"><span class="muted" id="balance-label">Tu patrimonio</span><div class="segmented" role="group" aria-label="Moneda"><button data-currency="TOTAL" aria-pressed="true">Todo USD</button><button data-currency="USD" aria-pressed="false">USD</button><button data-currency="CRC" aria-pressed="false">CRC</button></div></div>
+            <div class="balance-value sensitive" id="balance" aria-live="polite">••••••</div>
+            <div id="deduction-breakdown" class="deduction-breakdown" hidden></div>
+            <button id="composition-open" class="text-action" hidden><i data-lucide="list-filter"></i><span id="composition-label">Incluir en el total</span></button>
+            <div id="estimated-net-worth" class="estimated-net-worth" hidden></div>
+          </section>
+          <section class="distribution" aria-labelledby="distribution-heading">
+            <div class="section-heading"><h2 id="distribution-heading">Distribuci&#243;n</h2><span class="small-label" id="distribution-currency">USD</span></div>
+            <div class="allocation-chart" id="allocation-chart" role="img" aria-label="Distribuci&#243;n del patrimonio"><div class="donut"><div class="donut-center"><i data-lucide="wallet"></i></div></div></div>
+            <div id="allocation-legend" class="allocation-legend"></div>
+          </section>
+        </div>
+        <div id="summary-history-slot"><section class="history-section" aria-labelledby="history-heading"><div class="section-heading"><h2 id="history-heading">Evoluci&#243;n</h2><div class="segmented" role="group" aria-label="Periodo del historial"><button data-period="30" aria-pressed="false">30 d</button><button data-period="90" aria-pressed="false">90 d</button><button data-period="all" aria-pressed="true">Todo</button></div></div><label class="history-metric-label" hidden>Activo<select id="history-metric"><option value="stocks">Acciones y ETF</option><option value="btc">BTC &#183; pendiente</option></select></label><div id="history-summary" class="history-summary"></div><canvas id="history-chart" role="img" aria-label="Evoluci&#243;n del patrimonio"></canvas><p id="history-note" class="subtle"></p><details id="history-observations"><summary>Ver fechas e importes</summary><div id="history-rows"></div></details></section></div>
+        <section class="settings-group adjustment-section"><div class="section-heading"><h2>Dinero excluido</h2><button class="icon-button" data-new-adjustment title="Agregar resta al patrimonio" aria-label="Agregar resta al patrimonio"><i data-lucide="plus"></i></button></div><div id="adjustment-list"></div></section>
+        <div id="fx-info" class="fx-info" hidden></div>
+      </section>
+      <section id="rendimiento" class="view" aria-labelledby="performance-heading" hidden>
+        <div class="page-heading"><h1 id="performance-heading">Rendimiento</h1><button class="icon-button" data-performance-info title="Sobre las ganancias" aria-label="Sobre las ganancias"><i data-lucide="info"></i></button></div>
+        <p class="muted">Ganancia de las posiciones abiertas</p><div id="performance-total" class="history-summary"></div><p id="performance-note" class="subtle"></p>
+        <section class="performance-section" aria-label="Posiciones"><div class="section-heading"><h2>Posiciones IBKR</h2><select id="performance-sort" aria-label="Ordenar inversiones de mayor a menor"><option value="mark_price">Precio: mayor primero</option><option value="market_value">Valor: mayor primero</option><option value="unrealized_pnl">Ganancia: mayor primero</option></select></div><div class="performance-columns"><span>Activo</span><span id="performance-column">Precio USD</span><span>Ganancia USD</span></div><div id="performance-list"></div></section>
+        <section class="history-section" aria-labelledby="btc-heading"><div class="section-heading"><h2 id="btc-heading">Precio BTC/USD</h2><span class="small-label">Coinbase</span></div><div id="btc-price" class="history-summary">&#8212;</div><p id="btc-price-note" class="subtle">Precio pendiente</p><p class="subtle">Posici&#243;n pendiente de Binance</p></section>
+        <div id="performance-history-slot"></div>
+      </section>
+      <section id="cuentas" class="view" aria-labelledby="accounts-heading" hidden>
+        <div class="page-heading"><h1 id="accounts-heading">Cuentas</h1></div>
+        <div class="accounts-tools"><label class="search"><i data-lucide="search"></i><input id="search" type="search" placeholder="Buscar cuenta o entidad" aria-label="Buscar cuenta o entidad" autocomplete="off"></label><label class="sort-control"><i data-lucide="list-filter"></i><select id="sort" aria-label="Ordenar cuentas"><option value="source">Entidad</option><option value="date">Corte reciente</option><option value="balance">Saldo por moneda</option></select></label></div>
+        <div class="filter-row" role="group" aria-label="Filtrar cuentas"><button class="filter active" data-filter="all" aria-pressed="true">Todas</button><button class="filter" data-filter="USD" aria-pressed="false">USD</button><button class="filter" data-filter="CRC" aria-pressed="false">CRC</button><button class="filter" data-filter="investments" aria-pressed="false">Inversiones</button></div>
+        <div id="all-accounts" class="account-list"></div>
+        <section id="payroll-section" class="settings-group adjustment-section" hidden><div class="section-heading"><h2>Aportes</h2><span class="small-label" id="payroll-unit">CRC</span></div><div id="payroll-list"></div></section>
+      </section>
+      <section id="ajustes" class="view" aria-labelledby="settings-heading" hidden>
+        <div class="page-heading"><div><p class="eyebrow">A TU MANERA</p><h1 id="settings-heading">Ajustes</h1></div></div>
+        <section class="settings-group"><h2>Preferencias</h2><label class="setting-row"><span class="setting-icon"><i data-lucide="eye-off"></i></span><span class="setting-label">Ocultar importes<span>Privacidad en todas las vistas</span></span><input class="switch" id="privacy-setting" type="checkbox" checked role="switch"></label><label class="setting-row"><span class="setting-icon"><i data-lucide="coins"></i></span><span class="setting-label">Vista de inicio</span><select id="default-currency" aria-label="Vista de inicio"><option value="TOTAL">Todo USD</option><option>USD</option><option>CRC</option></select></label><label class="setting-row"><span class="setting-icon"><i data-lucide="accessibility"></i></span><span class="setting-label">Reducir movimiento</span><input class="switch" id="motion-setting" type="checkbox" role="switch"></label></section>
+        <section class="settings-group"><label class="setting-row"><span class="setting-icon"><i data-lucide="languages"></i></span><span class="setting-label">Idioma</span><select id="language-setting" aria-label="Idioma"><option value="es" lang="es">Espa&#241;ol</option><option value="en" lang="en">English</option></select></label></section>
+        <section class="settings-group"><button id="salary-setting" class="setting-row" hidden><span class="setting-icon"><i data-lucide="calendar-days"></i></span><span class="setting-label">Salario mensual<span id="salary-value"></span></span><i data-lucide="chevron-right"></i></button></section>
+        <section class="settings-group"><div class="section-heading"><h2>Conexiones</h2><span class="small-label">SOLO LECTURA</span></div><p id="automation-state" class="subtle">Actualizaci&#243;n autom&#225;tica pendiente</p><div id="automation-jobs"></div><div id="connections-list"></div></section>
+        <section class="settings-group"><h2>Acerca de DEX</h2><div class="setting-row"><img src="./icon.png" width="42" height="42" alt="" class="about-icon"><span class="setting-label">DEX<span id="about-mode">Vista local</span></span><span class="small-label" data-version>0.1.0</span></div><p class="settings-footnote">Acceso local en esta computadora. Sin sincronizaci&#243;n alojada ni recuperaci&#243;n en otro dispositivo todav&#237;a.</p></section>
+      </section>
+    </main>
+  </div>
+  <dialog id="detail" aria-labelledby="detail-title"><div class="sheet-handle"></div><div class="sheet-header"><span class="eyebrow" id="detail-eyebrow">DETALLE</span><button class="icon-button" id="detail-close" aria-label="Cerrar detalle" title="Cerrar"><i data-lucide="x"></i></button></div><div id="detail-content"></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <noscript>DEX necesita JavaScript para mostrar tus cuentas.</noscript>
+</body>
+</html>
