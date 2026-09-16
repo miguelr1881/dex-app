@@ -356,8 +356,8 @@ function render() {
     all('[data-new-adjustment], #salary-setting').forEach(button => { button.disabled = true; });
     select('#about-mode').textContent = 'Sheets privado';
     select('.settings-footnote').textContent = 'Lectura remota. Edita salario y restas en la app local.';
-    const date = snapshot.published_at || snapshot.payroll?.as_of;
-    select('#portal-date').textContent = date ? I18n.translate('Resumen publicado') + ': ' + new Intl.DateTimeFormat(I18n.locale, {dateStyle: 'long', ...(snapshot.published_at ? {timeStyle: 'short'} : {})}).format(new Date(snapshot.published_at || date + 'T12:00:00Z')) : I18n.translate('Fecha de publicaci\u00f3n no disponible');
+    const date = snapshot.published_at;
+    select('#portal-date').textContent = date ? I18n.translate('Resumen publicado') + ': ' + new Intl.DateTimeFormat(I18n.locale, {dateStyle: 'long', timeStyle: 'short'}).format(new Date(date)) : I18n.translate('Fecha de publicaci\u00f3n no disponible');
   }
 }
 function line(label, content) { return `<div class="detail-line"><span>${escapeHTML(label)}</span><span>${content}</span></div>`; }
