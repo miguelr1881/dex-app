@@ -65,7 +65,7 @@ const Portal = (() => {
           field('portal-session').hidden = false;
           document.dispatchEvent(new Event('portal-connected'));
         }});
-      client.requestAccessToken({prompt: 'select_account'});
+      client.requestAccessToken({prompt: ''});
     } catch { error(); }
   }
   async function request(range, {write = false, body} = {}) {
@@ -144,7 +144,7 @@ const Portal = (() => {
           editExpires = Date.now() + (Math.min(Number(response.expires_in), 3600) - 30) * 1000;
           finish();
         }});
-      editClient.requestAccessToken({prompt: 'consent'});
+      editClient.requestAccessToken({prompt: ''});
     } catch { denied(); }
   }
   async function submit(kind, change) {
