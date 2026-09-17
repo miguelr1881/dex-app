@@ -40,7 +40,7 @@ const Portal = (() => {
     field('portal-session').hidden = true;
   }
   function connect(event) {
-    event.preventDefault();
+    event?.preventDefault();
     if (connecting) return;
     try {
       const config = settings();
@@ -61,6 +61,7 @@ const Portal = (() => {
           clearTimeout(expiryTimer);
           expiryTimer = setTimeout(clear, expires - Date.now());
           try { localStorage.setItem('dex.portal-settings', JSON.stringify(config)); } catch {}
+          try { localStorage.removeItem('dex.portal-auto-connect-disabled'); } catch {}
           field('portal-login').hidden = true;
           field('portal-session').hidden = false;
           document.dispatchEvent(new Event('portal-connected'));
@@ -142,6 +143,7 @@ const Portal = (() => {
           if (response.error || !response.access_token || !google.accounts.oauth2.hasGrantedAllScopes(response, editScope) || !Number.isFinite(Number(response.expires_in)) || Number(response.expires_in) < 60) { denied(); return; }
           editToken = response.access_token;
           editExpires = Date.now() + (Math.min(Number(response.expires_in), 3600) - 30) * 1000;
+          try { localStorage.setItem('dex.portal-auto-edit', 'true'); } catch {}
           finish();
         }});
       editClient.requestAccessToken({prompt: ''});
@@ -178,14 +180,26 @@ const Portal = (() => {
       if (saved) { field('google-client').value = saved.clientId || ''; field('google-sheet').value = saved.spreadsheet || ''; }
     } catch {}
     field('google-form').addEventListener('submit', connect);
-    field('google-disconnect').addEventListener('click', clear);
+    field('google-disconnect').addEventListener('click', () => {
+      try { localStorage.setItem('dex.portal-auto-connect-disabled', 'true'); } catch {}
+      clear();
+    });
     field('google-edit').addEventListener('click', authorizeEdits);
     field('google-forget').addEventListener('click', () => {
       try { localStorage.removeItem('dex.portal-settings'); } catch {}
+      try { localStorage.removeItem('dex.portal-auto-connect-disabled'); } catch {}
       field('google-form').reset();
       clear();
     });
     document.addEventListener('visibilitychange', () => { if (!document.hidden && token && Date.now() >= expires) clear(); });
+    window.addEventListener('load', () => {
+      let disabled = false;
+      try { disabled = localStorage.getItem('dex.portal-auto-connect-disabled') === 'true'; } catch {}
+      if (!disabled && field('google-client').value && field('google-sheet').value) connect();
+    }, {once: true});
   }
-  return {enabled, summary, submit, get canEdit() { return canEdit(); }, get editConnecting() { return editConnecting; }, get connected() { return !!token && Date.now() < expires; }};
+  function autoEditEnabled() {
+    try { return localStorage.getItem('dex.portal-auto-edit') === 'true'; } catch { return false; }
+  }
+  return {enabled, summary, submit, authorizeEdits, get autoEdit() { return autoEditEnabled(); }, get canEdit() { return canEdit(); }, get editConnecting() { return editConnecting; }, get connected() { return !!token && Date.now() < expires; }};
 })();
