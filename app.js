@@ -353,12 +353,41 @@ function render() {
   if (currentDetail && !['adjustment', 'salary'].includes(currentDetail.kind) && select('#detail').open) renderDetail(currentDetail);
   icons();
   if (Portal.enabled) {
-    all('[data-new-adjustment], #salary-setting').forEach(button => { button.disabled = true; });
+    all('[data-new-adjustment], #salary-setting').forEach(button => { button.disabled = !snapshot.remote_editing?.enabled; });
     select('#about-mode').textContent = 'Sheets privado';
-    select('.settings-footnote').textContent = 'Lectura remota. Edita salario y restas en la app local.';
+    select('.settings-footnote').textContent = 'Datos privados en Google Sheets. Importaciones de solo lectura.';
     const date = snapshot.published_at;
     select('#portal-date').textContent = date ? I18n.translate('Resumen publicado') + ': ' + new Intl.DateTimeFormat(I18n.locale, {dateStyle: 'long', timeStyle: 'short'}).format(new Date(date)) : I18n.translate('Fecha de publicaci\u00f3n no disponible');
+    renderRemoteEdits();
   }
+}
+function renderRemoteEdits() {
+  if (!Portal.enabled || !snapshot) return;
+  const status = snapshot.remote_editing;
+  select('#portal-edit-consent').hidden = !status?.enabled || Portal.canEdit;
+  select('#google-edit').disabled = Portal.editConnecting;
+  select('#portal-edit-permission').hidden = !Portal.canEdit;
+  select('#portal-edit-permission').textContent = I18n.translate('Edici\u00f3n autorizada en esta sesi\u00f3n');
+  const container = select('#portal-edit-status');
+  container.hidden = !status?.enabled;
+  if (!status?.enabled) return;
+  if (!status.queue_available) { container.textContent = I18n.translate('Estado de cambios no disponible. Actualiza antes de editar.'); return; }
+  const requests = status.requests || [];
+  const pendingRequests = requests.filter(item => item.state === 'pending');
+  const recent = requests.filter(item => item.state !== 'pending').slice(-3);
+  const labels = {pending: 'Pendiente de la pr\u00f3xima ejecuci\u00f3n horaria', applied: 'Aplicado', conflict: 'No aplicado: cambi\u00f3 en otra sesi\u00f3n. Revisa y vuelve a editar.', invalid: 'No aplicado: datos no v\u00e1lidos. Revisa y vuelve a editar.'};
+  container.innerHTML = [...pendingRequests, ...recent].map(item => `<p class="subtle">${escapeHTML(I18n.translate(item.kind === 'salary' ? 'Salario mensual' : 'Resta'))}: ${escapeHTML(I18n.translate(labels[item.state] || labels.invalid))}</p>`).join('');
+  container.hidden = !requests.length;
+}
+async function queueRemoteChange(kind, change) {
+  const result = await Portal.submit(kind, change);
+  const status = snapshot.remote_editing;
+  status.requests ||= [];
+  if (!status.requests.some(item => item.id === result.id)) status.requests.push({id: result.id, kind, state: 'pending'});
+  select('#detail').close(); currentDetail = null;
+  render();
+  showToast('Solicitud enviada. Pendiente de aplicar.');
+  await load();
 }
 function line(label, content) { return `<div class="detail-line"><span>${escapeHTML(label)}</span><span>${content}</span></div>`; }
 function renderPayroll() {
@@ -400,6 +429,10 @@ function renderSalaryForm() {
     savingSalary = true;
     select('#salary-form button').disabled = true;
     try {
+      if (Portal.enabled) {
+        await queueRemoteChange('salary', {monthly_salary: select('#salary-amount').value.trim().replace(',', '.'), revision});
+        return;
+      }
       const response = await fetch('/api/payroll/salary', {method: 'POST', headers: {'X-DEX-Client': 'pwa', 'Content-Type': 'application/json'}, credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(12000), body: JSON.stringify({monthly_salary: select('#salary-amount').value.trim().replace(',', '.'), revision})});
       if (!response.ok) throw new Error(response.status === 409 ? 'El salario cambi\u00f3 en otra vista. Cierra y actualiza.' : 'No se pudo confirmar el cambio. Revisa el importe y actualiza antes de reintentar.');
       const data = await response.json(); validateSnapshot(data); snapshot = data;
@@ -441,6 +474,7 @@ async function saveAdjustment(change) {
   all('#adjustment-form button').forEach(button => { button.disabled = true; });
   select('#adjustment-error').hidden = true;
   try {
+    if (Portal.enabled) { await queueRemoteChange('adjustment', {...change, revision: adjustmentRevision}); return; }
     const response = await fetch('/api/adjustments', {method: 'POST', headers: {'X-DEX-Client': 'pwa', 'Content-Type': 'application/json'}, credentials: 'same-origin', cache: 'no-store', body: JSON.stringify({...change, revision: adjustmentRevision}), signal: AbortSignal.timeout(12000)});
     if (!response.ok) throw new Error(response.status === 409 ? 'Este ajuste cambi\u00f3 en otra vista. Cierra y actualiza antes de editar.' : response.status === 400 ? 'Revisa nombre, importe positivo y moneda de la cuenta.' : 'No se pudo confirmar el guardado. Actualiza antes de volver a intentarlo.');
     const data = await response.json();
@@ -503,7 +537,16 @@ function renderDetail(detail) {
 }
 function openDetail(kind, id) {
   if (!snapshot) return;
-  if (Portal.enabled && ['salary', 'adjustment'].includes(kind)) { showToast('Edita este dato en la app local'); return; }
+  if (Portal.enabled && ['salary', 'adjustment'].includes(kind)) {
+    if (!snapshot.remote_editing?.enabled || !snapshot.remote_editing.queue_available) { showToast('Edici\u00f3n remota no disponible. Actualiza el resumen.'); return; }
+    if (!Portal.canEdit) {
+      select('#portal-edit-consent').hidden = false;
+      select('#portal-edit-consent').open = true;
+      select('#portal-edit-consent').scrollIntoView({block: 'nearest'});
+      showToast('Autoriza la edici\u00f3n con Google.'); return;
+    }
+    if (snapshot.remote_editing.requests?.some(item => item.kind === kind && item.state === 'pending')) { showToast('Hay un cambio pendiente. Actualiza antes de editar de nuevo.'); return; }
+  }
   if (kind === 'connection' && snapshot.payroll?.configured && ['espp', 'asociacion'].includes(id)) {
     kind = 'payroll'; id = id === 'asociacion' ? 'association' : 'espp';
   }
@@ -594,6 +637,7 @@ async function load(userInitiated = false) {
 }
 function setPrivacy(value) { hiddenAmounts = value; savePreference('privacy', value); renderPrivacy(); render(); icons(); }
 document.addEventListener('portal-connected', () => { document.body.classList.add('connected'); load(true); loadMarket(); });
+document.addEventListener('portal-edit-permission', renderRemoteEdits);
 document.addEventListener('portal-disconnected', () => {
   snapshot = null; btcQuote = null; currentDetail = null;
   document.body.classList.remove('connected');

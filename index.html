@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; img-src 'self' https://*.googleusercontent.com; connect-src 'self' https://sheets.googleapis.com https://accounts.google.com/gsi/ https://api.coinbase.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta name="dex-build" content="0.7.0-edits1">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f7f8fa">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -53,7 +54,7 @@
           <div class="form-actions"><button id="google-connect" class="primary-action" type="submit">Continuar con Google</button></div>
         </form>
       </section>
-      <section id="portal-session" class="settings-group" hidden><div class="section-heading"><span class="subtle">Sheets privado</span><button id="google-disconnect" class="text-action" type="button">Cerrar sesi&#243;n</button></div><p id="portal-date" class="subtle"></p><p class="subtle">Lectura remota. Edita salario y restas en la app local.</p><button id="google-forget" class="text-action" type="button">Olvidar conexi&#243;n</button></section>
+      <section id="portal-session" class="settings-group" hidden><div class="section-heading"><span class="subtle">Sheets privado</span><button id="google-disconnect" class="text-action" type="button">Cerrar sesi&#243;n</button></div><p id="portal-date" class="subtle"></p><details id="portal-edit-consent" hidden><summary>Edici&#243;n de salario y restas</summary><p class="subtle">Google solicitar&#225; permiso para editar tus hojas de c&#225;lculo. DEX solo enviar&#225; solicitudes al archivo configurado. No cambia permisos de Gmail, bancos ni inversiones.</p><button id="google-edit" class="text-action" type="button"><i data-lucide="pencil"></i>Autorizar edici&#243;n con Google</button></details><p id="portal-edit-permission" class="subtle" hidden></p><p id="portal-edit-error" class="form-error" role="alert" hidden></p><div id="portal-edit-status" role="status" hidden></div><button id="google-forget" class="text-action" type="button">Olvidar conexi&#243;n</button></section>
       <section id="resumen" class="view" aria-labelledby="summary-heading">
         <div class="page-heading"><h1 id="summary-heading">Patrimonio</h1><button class="icon-button" id="coverage-open" aria-label="Datos y tipo de cambio" title="Datos y tipo de cambio"><i data-lucide="info"></i></button></div>
         <div class="summary-grid">
