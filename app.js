@@ -626,6 +626,7 @@ async function load(userInitiated = false) {
     select('#mode-badge').textContent = data.demo ? 'DEMO' : 'LOCAL';
     select('#mode-badge').classList.toggle('demo', data.demo);
     render();
+    if (Portal.enabled && data.remote_editing?.enabled && Portal.autoEdit && !Portal.canEdit) Portal.authorizeEdits();
     if (userInitiated) showToast(Portal.enabled ? 'Resumen de Sheets actualizado' : 'Resumen local actualizado');
   } catch {
     failedRefresh = true;
@@ -703,4 +704,4 @@ window.addEventListener('online', setNotice);
 window.addEventListener('offline', setNotice);
 all('[data-version]').forEach(node => { node.textContent = VERSION; });
 updateCurrency(); renderPrivacy(); navigate(); icons(); I18n.refresh(); load();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
