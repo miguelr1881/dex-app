@@ -88,9 +88,11 @@ function renderCrypto() {
   select('#crypto-list').innerHTML = ['BTC', 'USDT', 'USDC'].map(symbol => {
     const position = positions.find(item => item.symbol === symbol);
     const quantity = hiddenAmounts ? '\u2022\u2022\u2022\u2022' : position?.quantity ?? '\u2014';
-    return `<button class="crypto-row" data-crypto="${symbol}"><span class="coin-mark ${symbol.toLowerCase()}" aria-hidden="true">${symbol === 'BTC' ? '\u20bf' : '$'}</span><span class="crypto-identity"><strong data-no-translate>${symbol}</strong><small data-no-translate>${escapeHTML(quantity)}${position ? ' ' + symbol : ''}</small></span><span class="crypto-value sensitive">${position ? money(position.market_value, 'USD') : '\u2014'}<small>${I18n.translate(position ? 'Valor USD' : 'Pendiente de captura')}</small></span>${icon('chevron-right')}</button>`;
+    const products = hiddenAmounts ? [] : Object.entries(position?.products || {}).filter(([, value]) => decimal(value) > 0n).map(([name]) => ({spot: 'Spot', flexible: 'Earn Flexible', locked: 'Earn Locked', funding: 'Funding'}[name])).filter(Boolean);
+    return `<button class="crypto-row" data-crypto="${symbol}"><span class="coin-mark ${symbol.toLowerCase()}" aria-hidden="true">${symbol === 'BTC' ? '\u20bf' : '$'}</span><span class="crypto-identity"><strong data-no-translate>${symbol}</strong><small data-no-translate>${escapeHTML(quantity)}${position ? ' ' + symbol : ''}</small>${products.length ? `<small>${escapeHTML(products.join(' + '))}</small>` : ''}</span><span class="crypto-value sensitive">${position ? money(position.market_value, 'USD') : '\u2014'}<small>${I18n.translate(position ? 'Valor USD' : 'Pendiente de captura')}</small></span>${icon('chevron-right')}</button>`;
   }).join('');
   select('#crypto-note').textContent = state.captured_at ? `${I18n.translate(state.state === 'stale' ? 'Ultima captura valida' : 'Captura')} \u00b7 ${new Intl.DateTimeFormat(I18n.locale, {dateStyle: 'medium', timeStyle: 'short'}).format(new Date(state.captured_at))}` : I18n.translate('Pendiente de captura');
+  if (!state.funding_included) select('#crypto-note').textContent += ' \u00b7 ' + I18n.translate('Funding pendiente de captura.');
 }
 
 function renderMarket() {
@@ -326,28 +328,101 @@ function setNotice() {
     notice.textContent = '\u00daltima copia guardada. No se pudo comprobar una publicaci\u00f3n m\u00e1s reciente.';
   }
 }
+const allocationColors = {BAC:'#386f89', MultiMoney:'#318777', ROP:'#83709e', FCL:'#b582a0',
+  INTC:'#3763a6', BTC:'#d19b32', USDT:'#38987b', VOO:'#ac5762', QQQM:'#6d83be',
+  ESPP:'#879748', Asociacion:'#568eaa', Otros:'#8b939b'};
+let allocationModel = [];
+let allocationSelected = null;
+let allocationExpanded = false;
+let allocationAccounts = [];
+const otherColors = ['#728d9e', '#b68a6a', '#888b69', '#ab7994', '#688f84', '#7b80a0'];
+
+function allocationColor(name) {
+  return allocationColors[name] || otherColors[Math.max(0, allocationModel.findIndex(item => item.name === name)) % otherColors.length];
+}
+
+function distributionEntries(accounts) {
+  const groups = new Map();
+  const add = (name, value, label) => {
+    if (value === 0n) return;
+    if (!groups.has(name)) groups.set(name, {name, value:0n, components:[]});
+    const group = groups.get(name);
+    group.value += value;
+    group.components.push({label, value});
+  };
+  accounts.forEach(item => {
+    const amount = decimal(item.balance);
+    const account = snapshot.accounts.find(row => row.id === item.id) || item;
+    if (['ibkr', 'binance'].includes(item.source) && account.currency === 'USD') {
+      let positions = 0n;
+      (account.positions || []).forEach(position => {
+        if (position.currency !== 'USD') return;
+        const value = decimal(position.market_value);
+        const symbol = position.symbol;
+        positions += value;
+        add(['INTC','BTC','USDT','VOO','QQQM'].includes(symbol) ? symbol : 'Otros', value, symbol);
+      });
+      add('Otros', amount - positions, item.source === 'ibkr' ? 'IBKR CASH / ajustes' : 'Binance');
+    } else {
+      const name = item.source === 'bac_bank' ? 'BAC' : item.source === 'multimoney' ? 'MultiMoney'
+        : item.source === 'bac_pension' ? (['ROP','FCL'].includes(product(account)) ? product(account) : 'Otros')
+        : item.source === 'espp' ? 'ESPP' : item.source === 'asociacion' ? 'Asociacion' : 'Otros';
+      add(name, amount, item.key === 'association-personal' || item.key === 'association-employer'
+        ? selectionNames[item.key] : accountTitle(account));
+    }
+  });
+  return [...groups.values()].sort((first, second) => first.value > second.value ? -1 : first.value < second.value ? 1 : first.name.localeCompare(second.name));
+}
+function allocationLabel(name) {
+  return I18n.translate(name === 'Asociacion' ? 'Asociaci\u00f3n' : name === 'Otros' ? 'Otros' : name);
+}
+function allocationPercent(value, total) {
+  const tenths = Number(value * 1000n / total) / 10;
+  return tenths < 0.1 ? '&lt;0.1%' : `${tenths.toFixed(1)}%`;
+}
+function selectAllocation(name) {
+  allocationSelected = name;
+  const selected = allocationModel.find(item => item.name === name);
+  const total = allocationModel.filter(item => item.value > 0n).reduce((sum,item) => sum + item.value, 0n);
+  select('.donut-center').innerHTML = selected ? `<span class="allocation-focus-name">${escapeHTML(allocationLabel(name))}</span><strong>${hiddenAmounts ? '\u2022\u2022' : allocationPercent(selected.value,total)}</strong><span class="allocation-focus-value">${money(decimalString(selected.value), currency === 'TOTAL' ? 'USD' : currency)}</span>` : `<span class="allocation-focus-name">${I18n.translate('Distribuci\u00f3n')}</span>${icon('chart-pie')}`;
+  all('[data-allocation]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.allocation === name)));
+}
 function renderDistribution(accounts) {
-  const grouped = {};
-  accounts.forEach(account => {
-    const amount = decimal(account.balance);
-    if (amount <= 0n) return;
-    const category = entity(account.source).category;
-    grouped[category] = (grouped[category] || 0n) + amount;
-  });
-  const entries = Object.entries(grouped).sort((first, second) => first[1] > second[1] ? -1 : first[1] < second[1] ? 1 : first[0].localeCompare(second[0]));
-  const total = entries.reduce((sum, [, value]) => sum + value, 0n);
+  allocationAccounts = accounts;
+  allocationModel = distributionEntries(accounts);
+  const other = allocationModel.find(item => item.name === 'Otros');
+  if (allocationExpanded && other) {
+    const components = new Map();
+    other.components.forEach(component => components.set(component.label, (components.get(component.label) || 0n) + component.value));
+    if ([...components.values()].every(value => value >= 0n)) {
+      allocationModel = allocationModel.filter(item => item !== other).concat([...components].filter(([, value]) => value > 0n)
+        .map(([name, value]) => ({name, value, components: [{label: name, value}]})));
+    } else allocationExpanded = false;
+  }
+  const entries = allocationModel.filter(item => item.value > 0n);
+  const total = entries.reduce((sum, item) => sum + item.value, 0n);
   let cursor = 0;
-  const stops = [];
-  entries.forEach(([category, value], index) => {
-    const end = index === entries.length - 1 ? 100 : cursor + Number(value * 10000n / total) / 100;
-    stops.push(`${colors[category]} ${cursor}% ${end}%`);
+  const stops = entries.map((item,index) => {
+    const end = index === entries.length-1 ? 100 : cursor + Number(item.value * 100000n / total)/1000;
+    const segment = `${allocationColor(item.name)} ${cursor}% ${end}%`;
     cursor = end;
+    return segment;
   });
-  select('.donut').style.background = entries.length ? `conic-gradient(from -90deg, ${stops.join(',')})` : '#e5e8eb';
+  select('.donut').style.background = !hiddenAmounts && entries.length ? `conic-gradient(from -90deg, ${stops.join(',')})` : '#e5e8eb';
   select('#distribution-currency').textContent = currency === 'TOTAL' ? 'USD' : currency;
-  select('#allocation-chart').setAttribute('aria-label', `Distribuci\u00f3n de saldos positivos en ${currency === 'TOTAL' ? 'USD' : currency}, ${entries.length} categor\u00edas`);
-  select('#allocation-legend').innerHTML = entries.length ? entries.map(([category, value]) => `<div class="legend-row"><span class="legend-dot ${category}"></span><span>${categories[category]}</span><strong>${hiddenAmounts ? '&bull;&bull;' : `${(Number(value * 1000n / total) / 10).toFixed(1)}%`}</strong></div>`).join('') : '<p class="subtle">Sin saldos positivos registrados.</p>';
-  all('#allocation-legend .legend-dot').forEach((dot, index) => { dot.style.background = colors[entries[index][0]]; });
+  select('#allocation-chart').setAttribute('aria-label', I18n.translate(hiddenAmounts ? 'Importes ocultos' : 'Distribuci\u00f3n de saldos positivos antes de restas'));
+  select('#allocation-legend').innerHTML = entries.length ? entries.map(item => `<button class="allocation-item" data-allocation="${escapeHTML(item.name)}" aria-pressed="false"><span class="legend-dot"></span><span class="allocation-item-name">${escapeHTML(allocationLabel(item.name))}</span><strong>${hiddenAmounts ? '&bull;&bull;' : allocationPercent(item.value,total)}</strong></button>`).join('') : '<p class="subtle">Sin saldos positivos registrados.</p>';
+  all('#allocation-legend .legend-dot').forEach((dot,index) => {dot.style.background = allocationColor(entries[index].name);});
+  const toggle = select('#allocation-toggle');
+  toggle.hidden = !other || other.components.some(component => component.value < 0n);
+  toggle.setAttribute('aria-expanded', String(allocationExpanded));
+  toggle.innerHTML = `${icon(allocationExpanded ? 'minus' : 'plus')}<span>${I18n.translate(allocationExpanded ? 'Agrupar otros' : 'Desglosar otros')}</span>`;
+  all('[data-allocation]').forEach(button => button.addEventListener('click', () => {
+    selectAllocation(button.dataset.allocation);
+    openDetail('allocation', button.dataset.allocation);
+  }));
+  selectAllocation(entries.some(item => item.name === allocationSelected) ? allocationSelected : entries[0]?.name);
+  icons();
 }
 function renderSummary() {
   const combined = currency === 'TOTAL';
@@ -382,6 +457,7 @@ function renderFx(combined) {
   select('#fx-info').innerHTML = `${status ? `<p>${status}</p>` : ''}${total.net == null && total.state === 'espp_reconciliation_pending' ? '<p>Compra ESPP pendiente de confirmar en IBKR.</p>' : ''}${missing ? `<p>${escapeHTML(missing)} pendiente de incluir.</p>` : ''}<a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">Rates By Exchange Rate API</a>`;
   if (snapshot.crypto?.state === 'stale') select('#fx-info').insertAdjacentHTML('afterbegin', `<p>${I18n.translate('Binance: ultima captura o precio pendiente de actualizar.')}</p>`);
   if (snapshot.crypto?.assets?.length && snapshot.crypto.missing_assets?.length) select('#fx-info').insertAdjacentHTML('afterbegin', `<p>${escapeHTML(snapshot.crypto.missing_assets.join(', '))}: ${I18n.translate('Pendiente de captura')}</p>`);
+  if (snapshot.crypto?.assets?.length && !snapshot.crypto.funding_included) select('#fx-info').insertAdjacentHTML('afterbegin', `<p>${I18n.translate('Funding pendiente de captura.')}</p>`);
 }
 function renderAccounts() {
   if (!snapshot) return;
@@ -561,10 +637,16 @@ function renderDetail(detail) {
   const container = select('#detail-content');
   if (detail.kind === 'composition') {
     renderComposition();
+  } else if (detail.kind === 'allocation') {
+    const entry = allocationModel.find(item => item.name === detail.id);
+    if (!entry) { closeDetail(); return; }
+    const denomination = currency === 'TOTAL' ? 'USD' : currency;
+    select('#detail-eyebrow').textContent = I18n.translate('Distribuci\u00f3n');
+    container.innerHTML = `<h2 id="detail-title">${escapeHTML(allocationLabel(entry.name))}</h2><p class="detail-balance sensitive">${money(decimalString(entry.value),denomination)}</p><div class="detail-block">${entry.components.map(component => line(escapeHTML(I18n.translate(component.label)),money(decimalString(component.value),denomination))).join('')}</div><p class="detail-callout">${I18n.translate('Saldos antes de restas. Las posiciones ya forman parte del patrimonio; no se suman de nuevo.')}</p>`;
   } else if (detail.kind === 'crypto') {
     const position = snapshot.accounts.filter(account => account.source === 'binance').flatMap(account => account.positions || []).find(item => item.symbol === detail.id);
     select('#detail-eyebrow').textContent = 'BINANCE';
-    container.innerHTML = `<h2 id="detail-title" data-no-translate>${escapeHTML(detail.id)}</h2>${position ? `<p class="detail-balance sensitive">${money(position.market_value, 'USD')}</p>${line('Cantidad', hiddenAmounts ? '\u2022\u2022\u2022\u2022' : escapeHTML(position.quantity))}${line('Precio USD', money(position.mark_price, 'USD'))}${Object.entries(position.products || {}).map(([name, quantity]) => line({spot: 'Spot', flexible: 'Earn Flexible', locked: 'Earn Locked'}[name], hiddenAmounts ? '\u2022\u2022\u2022\u2022' : escapeHTML(quantity))).join('')}${line('Captura', escapeHTML(snapshot.crypto?.captured_at ? new Intl.DateTimeFormat(I18n.locale, {dateStyle:'medium', timeStyle:'short'}).format(new Date(snapshot.crypto.captured_at)) : dateLabel(position.as_of)))}${line('Precio consultado', escapeHTML(snapshot.crypto?.priced_at ? new Intl.DateTimeFormat(I18n.locale, {dateStyle:'medium', timeStyle:'short'}).format(new Date(snapshot.crypto.priced_at)) : '\u2014'))}<p class="detail-callout">${I18n.translate('Valor incluido una vez en Binance. Sin costo de compra ni rentabilidad calculada.')}</p>` : `<p class="coverage-text">${I18n.translate('Pendiente de captura. Actualiza el script del iPhone para incluir los tres activos.')}</p>`}`;
+    container.innerHTML = `<h2 id="detail-title" data-no-translate>${escapeHTML(detail.id)}</h2>${position ? `<p class="detail-balance sensitive">${money(position.market_value, 'USD')}</p>${line('Cantidad', hiddenAmounts ? '\u2022\u2022\u2022\u2022' : escapeHTML(position.quantity))}${line('Precio USD', money(position.mark_price, 'USD'))}${Object.entries(position.products || {}).map(([name, quantity]) => line({spot: 'Spot', flexible: 'Earn Flexible', locked: 'Earn Locked', funding: 'Funding'}[name], hiddenAmounts ? '\u2022\u2022\u2022\u2022' : escapeHTML(quantity))).join('')}${line('Captura', escapeHTML(snapshot.crypto?.captured_at ? new Intl.DateTimeFormat(I18n.locale, {dateStyle:'medium', timeStyle:'short'}).format(new Date(snapshot.crypto.captured_at)) : dateLabel(position.as_of)))}${line('Precio consultado', escapeHTML(snapshot.crypto?.priced_at ? new Intl.DateTimeFormat(I18n.locale, {dateStyle:'medium', timeStyle:'short'}).format(new Date(snapshot.crypto.priced_at)) : '\u2014'))}<p class="detail-callout">${I18n.translate('Valor incluido una vez en Binance. Sin costo de compra ni rentabilidad calculada.')}</p>` : `<p class="coverage-text">${I18n.translate('Pendiente de captura. Actualiza el script del iPhone para incluir los tres activos.')}</p>`}`;
   } else if (detail.kind === 'performance') {
     select('#detail-eyebrow').textContent = 'RENDIMIENTO';
     container.innerHTML = `<h2 id="detail-title">Sobre las ganancias</h2><p class="coverage-text">Valor de tus posiciones abiertas menos lo que costaron, seg\u00fan el \u00faltimo informe de IBKR. Son ganancias o p\u00e9rdidas que a\u00fan no se han realizado vendiendo.</p>${line('Precio', 'Importe por acci\u00f3n')}${line('Valor', 'Importe total de la posici\u00f3n')}${line('Porcentaje', 'Ganancia dividida entre costo')}<p class="detail-callout">No incluye ventas anteriores ni dividendos. Los precios corresponden a la fecha del informe, no a cotizaciones en vivo. BTC sigue pendiente de datos reales.</p>`;
@@ -607,6 +689,7 @@ function renderDetail(detail) {
   }
   if (detail.kind === 'connection' && detail.id === 'binance') {
     container.querySelector('.coverage-text').textContent = I18n.translate('Capturas de solo lectura desde tu iPhone. BTC, USDT y USDC en Spot y Simple Earn. Procesamiento diario; otros productos no incluidos.');
+    container.insertAdjacentHTML('beforeend', `<p class="subtle">${I18n.translate(snapshot.crypto?.funding_included ? 'Funding incluido en la captura.' : 'Funding pendiente de captura.')}</p>`);
   }
   if (detail.kind === 'payroll' && detail.id === 'espp') container.querySelector('.detail-callout').textContent = 'El 19 de febrero y agosto el acumulado vuelve a cero. Las acciones se reflejan con el siguiente informe de IBKR, sin confirmaciones manuales. Hasta entonces el total puede verse temporalmente menor.';
   if (detail.kind === 'performance') {
@@ -626,6 +709,8 @@ function openDetail(kind, id) {
   if (Portal.enabled && ['salary', 'adjustment'].includes(kind)) {
     if (!snapshot.remote_editing?.enabled) { showToast('Edici\u00f3n remota no disponible. Actualiza el resumen.'); return; }
     if (!Portal.canEdit) {
+      location.hash = 'ajustes';
+      navigate();
       select('#portal-edit-consent').hidden = false;
       select('#portal-edit-consent').open = true;
       select('#portal-edit-consent').scrollIntoView({block: 'nearest'});
@@ -772,6 +857,10 @@ document.addEventListener('click', event => {
   else if (connection) openDetail('connection', connection.dataset.connection);
 });
 select('#coverage-open').addEventListener('click', () => openDetail('coverage'));
+select('#allocation-toggle').addEventListener('click', () => {
+  allocationExpanded = !allocationExpanded;
+  renderDistribution(allocationAccounts);
+});
 select('#history-chart').addEventListener('pointerdown', chartPointer);
 select('#history-chart').addEventListener('pointermove', chartPointer);
 select('#history-chart').addEventListener('keydown', event => {

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; img-src 'self' https://*.googleusercontent.com; connect-src 'self' https://sheets.googleapis.com https://accounts.google.com/gsi/ https://api.coinbase.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <meta name="dex-build" content="0.7.0-crypto1">
+  <meta name="dex-build" content="0.7.0-crypto3">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f7f8fa">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -62,7 +62,6 @@
         </form>
         </details>
       </section>
-      <section id="portal-session" class="settings-group" hidden><div class="section-heading"><span class="subtle">Sheets privado</span><button id="google-disconnect" class="text-action" type="button">Cerrar sesi&#243;n</button></div><p id="portal-date" class="subtle"></p><details id="portal-edit-consent" hidden><summary>Edici&#243;n de salario y restas</summary><p class="subtle">Google solicitar&#225; permiso para editar tus hojas de c&#225;lculo. DEX solo enviar&#225; solicitudes al archivo configurado. No cambia permisos de Gmail, bancos ni inversiones.</p><button id="google-edit" class="text-action" type="button"><i data-lucide="pencil"></i>Autorizar edici&#243;n con Google</button></details><p id="portal-edit-permission" class="subtle" hidden></p><p id="portal-edit-error" class="form-error" role="alert" hidden></p><div id="portal-edit-status" role="status" hidden></div><button id="google-forget" class="text-action" type="button">Olvidar conexi&#243;n</button></section>
       <section id="resumen" class="view" aria-labelledby="summary-heading">
         <div class="page-heading"><h1 id="summary-heading">Patrimonio</h1><button class="icon-button" id="coverage-open" aria-label="Datos y tipo de cambio" title="Datos y tipo de cambio"><i data-lucide="info"></i></button></div>
         <div class="summary-grid">
@@ -77,6 +76,7 @@
             <div class="section-heading"><h2 id="distribution-heading">Distribuci&#243;n</h2><span class="small-label" id="distribution-currency">USD</span></div>
             <div class="allocation-chart" id="allocation-chart" role="img" aria-label="Distribuci&#243;n del patrimonio"><div class="donut"><div class="donut-center"><i data-lucide="wallet"></i></div></div></div>
             <div id="allocation-legend" class="allocation-legend"></div>
+            <button id="allocation-toggle" class="text-action allocation-toggle" aria-expanded="false" aria-controls="allocation-legend" hidden><i data-lucide="plus"></i><span>Desglosar otros</span></button>
           </section>
         </div>
         <div id="summary-history-slot"><section class="history-section" aria-labelledby="history-heading"><div class="section-heading"><h2 id="history-heading">Evoluci&#243;n</h2><div class="segmented" role="group" aria-label="Periodo del historial"><button data-period="30" aria-pressed="false">30 d</button><button data-period="90" aria-pressed="false">90 d</button><button data-period="all" aria-pressed="true">Todo</button></div></div><label class="history-metric-label" hidden>Activo<select id="history-metric"><option value="stocks">Acciones y ETF</option><option value="btc">BTC</option><option value="usdt">USDT</option><option value="usdc">USDC</option></select></label><div id="history-summary" class="history-summary"></div><div id="chart-readout" class="chart-readout" hidden><span id="chart-date"></span><strong id="chart-value" class="sensitive"></strong></div><canvas id="history-chart" role="slider" tabindex="0" aria-label="Observaciones" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"></canvas><p id="history-note" class="subtle"></p><details id="history-observations"><summary>Ver fechas e importes</summary><div id="history-rows"></div></details></section></div>
@@ -100,6 +100,13 @@
       </section>
       <section id="ajustes" class="view" aria-labelledby="settings-heading" hidden>
         <div class="page-heading"><div><p class="eyebrow">A TU MANERA</p><h1 id="settings-heading">Ajustes</h1></div></div>
+        <section id="portal-session" class="settings-group access-settings" aria-labelledby="access-heading" hidden>
+          <div class="section-heading"><h2 id="access-heading">Acceso y sincronizaci&#243;n</h2><i data-lucide="shield-check" aria-hidden="true"></i></div>
+          <p id="portal-date" class="subtle"></p>
+          <details id="portal-edit-consent" hidden><summary>Edici&#243;n de salario y restas</summary><p class="subtle">Google solicitar&#225; permiso para editar tus hojas de c&#225;lculo. DEX solo enviar&#225; solicitudes al archivo configurado. No cambia permisos de Gmail, bancos ni inversiones.</p><button id="google-edit" class="text-action" type="button"><i data-lucide="pencil"></i>Autorizar edici&#243;n con Google</button></details>
+          <p id="portal-edit-permission" class="subtle" hidden></p><p id="portal-edit-error" class="form-error" role="alert" hidden></p><div id="portal-edit-status" role="status" hidden></div>
+          <div class="access-actions"><button id="google-disconnect" class="text-action" type="button">Cerrar sesi&#243;n</button><button id="google-forget" class="text-action" type="button">Olvidar conexi&#243;n</button></div>
+        </section>
         <section class="settings-group"><h2>Preferencias</h2><label class="setting-row"><span class="setting-icon"><i data-lucide="eye-off"></i></span><span class="setting-label">Ocultar importes<span>Privacidad en todas las vistas</span></span><input class="switch" id="privacy-setting" type="checkbox" checked role="switch"></label><label class="setting-row"><span class="setting-icon"><i data-lucide="coins"></i></span><span class="setting-label">Vista de inicio</span><select id="default-currency" aria-label="Vista de inicio"><option value="TOTAL">Todo USD</option><option>USD</option><option>CRC</option></select></label><label class="setting-row"><span class="setting-icon"><i data-lucide="accessibility"></i></span><span class="setting-label">Reducir movimiento</span><input class="switch" id="motion-setting" type="checkbox" role="switch"></label></section>
         <section class="settings-group"><label class="setting-row"><span class="setting-icon"><i data-lucide="languages"></i></span><span class="setting-label">Idioma</span><select id="language-setting" aria-label="Idioma"><option value="es" lang="es">Espa&#241;ol</option><option value="en" lang="en">English</option></select></label></section>
         <section class="settings-group"><button id="salary-setting" class="setting-row" hidden><span class="setting-icon"><i data-lucide="calendar-days"></i></span><span class="setting-label">Salario mensual<span id="salary-value"></span></span><i data-lucide="chevron-right"></i></button></section>

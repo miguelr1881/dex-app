@@ -4,6 +4,14 @@ const I18n = (() => {
   let language = 'es';
   try { if (localStorage.getItem('dex.language') === 'en') language = 'en'; } catch {}
   const catalog = new Map([
+    ['Desglosar otros', 'Expand others'], ['Agrupar otros', 'Group others'],
+    ['Funding pendiente de captura.', 'Funding awaiting capture.'],
+    ['Funding incluido en la captura.', 'Funding included in the capture.'],
+    ['Otros', 'Other'], ['IBKR CASH / ajustes', 'IBKR CASH / adjustments'],
+    ['Distribuci\u00f3n de saldos positivos antes de restas', 'Positive balances before deductions'],
+    ['Saldos antes de restas. Las posiciones ya forman parte del patrimonio; no se suman de nuevo.', 'Balances before deductions. Positions are already included in net worth; they are not added again.'],
+    ['Acceso y sincronizaci\u00f3n', 'Access and sync'], ['Funding no incluido.', 'Funding not included.'],
+    ['Binance: Funding no incluido.', 'Binance: Funding not included.'],
     ['Criptoactivos', 'Crypto assets'], ['Valor USD', 'Value USD'], ['Captura', 'Observation'],
     ['Sin actualizar', 'Out of date'], ['Ultima captura valida', 'Last valid observation'],
     ['Pendiente de captura', 'Awaiting observation'], ['Cantidad', 'Quantity'],
