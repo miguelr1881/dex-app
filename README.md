@@ -1,6 +1,6 @@
 # DEX Web
 
-Build: 0.7.0-crypto3. GitHub Pages interface with optional encrypted summary reading.
+Build: 0.7.0-crypto4. GitHub Pages interface with optional encrypted summary reading.
 The private daily workflow publishes only data/dex-snapshot.json (AES-256-GCM).
 Never upload a decryption key, credentials, private source or plaintext financial data.
 

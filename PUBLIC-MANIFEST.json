@@ -2,13 +2,13 @@
   "files_sha256": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "LUCIDE-LICENSE": "1e7290b35280a048667bbf0ebabac1c7fd52a75300e8b2946ac165715997f2bc",
-    "README.md": "bbd176a21362938b32c830d71fde14b3179ea2e778591821c50b27eba6d3c27e",
-    "app.css": "c0b290d3d9354b1804afbc914e67da29730c788ed0245ff14a0a71ca4ad3b125",
-    "app.js": "b201b30bb3f89521680046bc088cb5ff0af4ce51e84848dc275ebe4ceb7eb301",
+    "README.md": "4b5439f13e11c88b4be9315ac2e151498b894d6617a777d34b5c72ffbd1d5aa3",
+    "app.css": "99d00c6addc1c567c58af17af0ea48381b299fbc212df251a377768173e89ff3",
+    "app.js": "4f5b2c9fd6ee8264a59b3f8678c76a18456f277aba87dd326d9470736bbb8883",
     "i18n.js": "a9f696c65de2867b5786d50c20ca118b4798fd310b39866bee1ba023508cd127",
     "icon-512.png": "12dc1302265eec8b04b6cd1706bf5c89e1be1bc7f03fd055ba82fdb259cb87da",
     "icon.png": "276cee9edcf4979adabb4a2e4a7a54cbe3e6a2ced4ea4ec652d50f49809cb618",
-    "index.html": "96296094ee7bffe35c8172624e82e8a0972e8263e2663c046d9ffcef2a552728",
+    "index.html": "e6f3bf5e519e5a280eab8c6aa146181c0ec114374a892cf747ca4e61c0fc6110",
     "lucide.js": "3411692820cb8d47543f69496aa25fd603a358f4498046f41c508a5a3342210e",
     "manifest.webmanifest": "3ec2280301143cc2f0e417d3bcc81daf9513590bcdbeb09a6fc695a37ad624d9",
     "portal.css": "697917d9ab210bd66c7ec0834fc239bd1ddb9d5546a1a54dc5a70d29254efbfa",
@@ -17,7 +17,7 @@
     "privacy.html": "01bd69d114ebc16c01dab11486b6c815a28f6eb27462fdc3f01ee5f672c5f75f",
     "sheets-reader.js": "388196d81737e36af334bcb23b9d0c596ae18fe7a9a5e9bdf194b06ba4059694",
     "snapshot.js": "770e88419d2bf871b20da9ac7522cba1f89847213bbf155725d47b1e41a75651",
-    "sw.js": "073b84099de80bc1c663fa70e4b56e18f65b05d54db5028bfe77b86dc864b691"
+    "sw.js": "f75a4ded0c7165205645efc794f25b9c9165b06a75dd76b5063e3767b5329e47"
   },
   "contains_private_data": false,
   "scope": "interface_only"

@@ -391,13 +391,14 @@ function renderDistribution(accounts) {
   allocationAccounts = accounts;
   allocationModel = distributionEntries(accounts);
   const other = allocationModel.find(item => item.name === 'Otros');
+  let signedComponents = [];
   if (allocationExpanded && other) {
     const components = new Map();
     other.components.forEach(component => components.set(component.label, (components.get(component.label) || 0n) + component.value));
     if ([...components.values()].every(value => value >= 0n)) {
       allocationModel = allocationModel.filter(item => item !== other).concat([...components].filter(([, value]) => value > 0n)
         .map(([name, value]) => ({name, value, components: [{label: name, value}]})));
-    } else allocationExpanded = false;
+    } else signedComponents = [...components].filter(([, value]) => value !== 0n);
   }
   const entries = allocationModel.filter(item => item.value > 0n);
   const total = entries.reduce((sum, item) => sum + item.value, 0n);
@@ -414,9 +415,11 @@ function renderDistribution(accounts) {
   select('#allocation-legend').innerHTML = entries.length ? entries.map(item => `<button class="allocation-item" data-allocation="${escapeHTML(item.name)}" aria-pressed="false"><span class="legend-dot"></span><span class="allocation-item-name">${escapeHTML(allocationLabel(item.name))}</span><strong>${hiddenAmounts ? '&bull;&bull;' : allocationPercent(item.value,total)}</strong></button>`).join('') : '<p class="subtle">Sin saldos positivos registrados.</p>';
   all('#allocation-legend .legend-dot').forEach((dot,index) => {dot.style.background = allocationColor(entries[index].name);});
   const toggle = select('#allocation-toggle');
-  toggle.hidden = !other || other.components.some(component => component.value < 0n);
+  toggle.hidden = !other;
   toggle.setAttribute('aria-expanded', String(allocationExpanded));
   toggle.innerHTML = `${icon(allocationExpanded ? 'minus' : 'plus')}<span>${I18n.translate(allocationExpanded ? 'Agrupar otros' : 'Desglosar otros')}</span>`;
+  select('#allocation-components')?.remove();
+  if (signedComponents.length) toggle.insertAdjacentHTML('beforebegin', `<div id="allocation-components" class="allocation-components">${signedComponents.map(([name, value]) => `<div class="allocation-component"><span data-no-translate>${escapeHTML(name)}</span><strong>${money(decimalString(value), currency === 'TOTAL' ? 'USD' : currency)}</strong></div>`).join('')}</div>`);
   all('[data-allocation]').forEach(button => button.addEventListener('click', () => {
     selectAllocation(button.dataset.allocation);
     openDetail('allocation', button.dataset.allocation);

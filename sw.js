@@ -1,5 +1,5 @@
 'use strict';
-const CACHE = 'dex-pages-shell-crypto3';
+const CACHE = 'dex-pages-shell-crypto4';
 const SHELL = ["./", "./index.html", "./portal.css", "./manifest.webmanifest", "./app.css", "./app.js", "./i18n.js", "./sheets-reader.js", "./snapshot.js", "./portal.js", "./lucide.js", "./icon.png", "./icon-512.png", "./privacy.html", "./privacy.css"].map(path => new URL(path, self.registration.scope).href);
 self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('dex-pages-shell-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
