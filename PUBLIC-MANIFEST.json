@@ -2,13 +2,13 @@
   "files_sha256": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "LUCIDE-LICENSE": "1e7290b35280a048667bbf0ebabac1c7fd52a75300e8b2946ac165715997f2bc",
-    "README.md": "1bd2ce97ab23d31ec6530af39987be1b0972b2d496b61ea6bb889905b7d0515b",
-    "app.css": "70d37265e1449b40bc538c5ac67b0453c3e67d5922dcf5e97d9c8030dfef21cf",
-    "app.js": "5dc009baad0da640b7486dabc2d6bf76d7d43bd5d5967769dd529dc024dd244f",
-    "i18n.js": "1cd8502adfa7c1e71365f617db5d6c10841ee0ba6531fb57e7163bf8c4d306ec",
+    "README.md": "45384cd59e7f6e66f69c1e1cd7082ef3c2f18deef861028bf2b1b2ca5c6db3c8",
+    "app.css": "f046ae611e58812a7c5e5c0a98bb9181cd381cf2283a73761fc97d7917116525",
+    "app.js": "9a8d20d336baa3fe2b94b021b95abe9a877dda21d1d722bd355db314821f54db",
+    "i18n.js": "6ed0fec8311a54089bd025be1e4fd6ff2312bbf23b75149f7ba8e49d9c7df1d9",
     "icon-512.png": "12dc1302265eec8b04b6cd1706bf5c89e1be1bc7f03fd055ba82fdb259cb87da",
     "icon.png": "276cee9edcf4979adabb4a2e4a7a54cbe3e6a2ced4ea4ec652d50f49809cb618",
-    "index.html": "a4dd518ba1e9138bc5641596b3b8130561397499cee89f0aebd2e49401b925c1",
+    "index.html": "ad8569c27c8d5a770c037f66abe37b95bdce1942e07fc9253b069c5fc7024676",
     "lucide.js": "3411692820cb8d47543f69496aa25fd603a358f4498046f41c508a5a3342210e",
     "manifest.webmanifest": "3ec2280301143cc2f0e417d3bcc81daf9513590bcdbeb09a6fc695a37ad624d9",
     "portal.css": "697917d9ab210bd66c7ec0834fc239bd1ddb9d5546a1a54dc5a70d29254efbfa",
@@ -17,7 +17,7 @@
     "privacy.html": "01bd69d114ebc16c01dab11486b6c815a28f6eb27462fdc3f01ee5f672c5f75f",
     "sheets-reader.js": "388196d81737e36af334bcb23b9d0c596ae18fe7a9a5e9bdf194b06ba4059694",
     "snapshot.js": "770e88419d2bf871b20da9ac7522cba1f89847213bbf155725d47b1e41a75651",
-    "sw.js": "d9414a72f63efe440f0b06e5442358a10dc2f351c459e81dbbdf65073f87cb3f"
+    "sw.js": "c88ce51ae8b07ecc93b69c91ba891ea8634abc8e74b370fedd5ad10525d2bb5b"
   },
   "contains_private_data": false,
   "scope": "interface_only"

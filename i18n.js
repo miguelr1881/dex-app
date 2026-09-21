@@ -4,6 +4,17 @@ const I18n = (() => {
   let language = 'es';
   try { if (localStorage.getItem('dex.language') === 'en') language = 'en'; } catch {}
   const catalog = new Map([
+    ['Criptoactivos', 'Crypto assets'], ['Valor USD', 'Value USD'], ['Captura', 'Observation'],
+    ['Sin actualizar', 'Out of date'], ['Ultima captura valida', 'Last valid observation'],
+    ['Pendiente de captura', 'Awaiting observation'], ['Cantidad', 'Quantity'],
+    ['Precio consultado', 'Price checked'], ['Observaciones', 'Observations'],
+    ['Actualizacion diaria alojada', 'Hosted daily updates'], ['Lectura privada cifrada', 'Encrypted private reading'],
+    ['Valor de la posicion, no rentabilidad.', 'Position value, not investment return.'],
+    ['Binance: ultima captura o precio pendiente de actualizar.', 'Binance: observation or price awaiting update.'],
+    ['Valor incluido una vez en Binance. Sin costo de compra ni rentabilidad calculada.', 'Value included once in Binance. No purchase cost or investment return calculated.'],
+    ['Pendiente de captura. Actualiza el script del iPhone para incluir los tres activos.', 'Awaiting observation. Update the iPhone script to include all three assets.'],
+    ['Capturas de solo lectura desde tu iPhone. BTC, USDT y USDC en Spot y Simple Earn. Procesamiento diario; otros productos no incluidos.', 'Read-only observations from your iPhone. BTC, USDT and USDC in Spot and Simple Earn. Daily processing; other products excluded.'],
+    ['IBKR: precios del informe, sin ventas previas ni dividendos. Criptoactivos: valor de las posiciones, sin rentabilidad calculada.', 'IBKR: report prices, excluding prior sales and dividends. Crypto assets: position value, without investment return calculations.'],
     ['Clave del dispositivo', 'Device key'], ['Vincular dispositivo', 'Link device'],
     ['Olvidar dispositivo', 'Forget device'], ['Conexi\u00f3n de Google', 'Google connection'],
     ['Pendiente de la pr\u00f3xima ejecuci\u00f3n diaria', 'Waiting for the next daily run'],
