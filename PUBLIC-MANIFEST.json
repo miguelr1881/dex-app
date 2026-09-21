@@ -2,21 +2,23 @@
   "files_sha256": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "LUCIDE-LICENSE": "1e7290b35280a048667bbf0ebabac1c7fd52a75300e8b2946ac165715997f2bc",
-    "README.md": "7ea4dc67a38732dfa6519a5840da9856ed98a346b309fffa7bb778f5801d31b3",
+    "README.md": "1bd2ce97ab23d31ec6530af39987be1b0972b2d496b61ea6bb889905b7d0515b",
     "app.css": "70d37265e1449b40bc538c5ac67b0453c3e67d5922dcf5e97d9c8030dfef21cf",
-    "app.js": "e5b8f974e52781b046b2072dac0328edcc54e5d321c98b430a65b9ca454bc740",
-    "i18n.js": "e36a29cc44e5d7881f482f01dbb988d8f37aacf65424d235c2a8ca09a039a608",
+    "app.js": "5dc009baad0da640b7486dabc2d6bf76d7d43bd5d5967769dd529dc024dd244f",
+    "i18n.js": "1cd8502adfa7c1e71365f617db5d6c10841ee0ba6531fb57e7163bf8c4d306ec",
     "icon-512.png": "12dc1302265eec8b04b6cd1706bf5c89e1be1bc7f03fd055ba82fdb259cb87da",
     "icon.png": "276cee9edcf4979adabb4a2e4a7a54cbe3e6a2ced4ea4ec652d50f49809cb618",
-    "index.html": "d8f0a40934b66a5189a5279287fb9ed3cbd4514fcaa7031b4e27dea8cd8847b3",
+    "index.html": "a4dd518ba1e9138bc5641596b3b8130561397499cee89f0aebd2e49401b925c1",
     "lucide.js": "3411692820cb8d47543f69496aa25fd603a358f4498046f41c508a5a3342210e",
     "manifest.webmanifest": "3ec2280301143cc2f0e417d3bcc81daf9513590bcdbeb09a6fc695a37ad624d9",
     "portal.css": "697917d9ab210bd66c7ec0834fc239bd1ddb9d5546a1a54dc5a70d29254efbfa",
-    "portal.js": "3c05dd9877de03e12e218d006a0962bf3ef35d7aab3b259259ad02e286e34c63",
+    "portal.js": "e0764cca83c642d0100a0b2c99ce4b212c8117f0125a927351bf0a8911233301",
     "privacy.css": "65a786a0a82ee7d0d8ecfda1d60ab79eefa92590662a6edc4299bed2d78117e2",
-    "privacy.html": "e47a4732fb7469740003d785ff7a2b4190a48c079b94c7bf8fa07ea66ecff422",
+    "privacy.html": "01bd69d114ebc16c01dab11486b6c815a28f6eb27462fdc3f01ee5f672c5f75f",
     "sheets-reader.js": "388196d81737e36af334bcb23b9d0c596ae18fe7a9a5e9bdf194b06ba4059694",
-    "sw.js": "de3162275dc8b1ba8719d25cf7be88ae8c14639145039b631bf01cc44235de6b"
+    "snapshot.js": "770e88419d2bf871b20da9ac7522cba1f89847213bbf155725d47b1e41a75651",
+    "sw.js": "d9414a72f63efe440f0b06e5442358a10dc2f351c459e81dbbdf65073f87cb3f"
   },
-  "contains_private_data": false
+  "contains_private_data": false,
+  "scope": "interface_only"
 }

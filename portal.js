@@ -19,6 +19,15 @@ const Portal = (() => {
   let client;
   let connecting = false;
   const field = id => document.getElementById(id);
+  function showConnected() {
+    field('portal-login').hidden = true;
+    field('portal-session').hidden = false;
+    field('google-disconnect').hidden = !token;
+    field('google-connect').hidden = Snapshot.connected;
+    field('google-forget').textContent = Snapshot.connected ? 'Olvidar dispositivo' : 'Olvidar conexi\u00f3n';
+    if (Snapshot.connected) field('google-edit').before(field('google-configuration'));
+    document.dispatchEvent(new Event('portal-connected'));
+  }
   function settings() {
     const clientId = field('google-client').value.trim();
     const spreadsheet = field('google-sheet').value.trim();
@@ -34,13 +43,20 @@ const Portal = (() => {
   function clear() {
     token = null; expires = 0; generation += 1;
     editToken = null; editExpires = 0; sessionConfig = null; receipts = []; attempts.clear();
+    connecting = false; editConnecting = false;
     clearTimeout(expiryTimer);
+    if (Snapshot.connected) {
+      showConnected();
+      document.dispatchEvent(new Event('portal-edit-permission'));
+      return;
+    }
     document.dispatchEvent(new Event('portal-disconnected'));
     field('portal-login').hidden = false;
     field('portal-session').hidden = true;
   }
   function connect(event) {
     event?.preventDefault();
+    if (Snapshot.connected) { authorizeEdits(); return; }
     if (connecting) return;
     try {
       const config = settings();
@@ -48,10 +64,12 @@ const Portal = (() => {
       connecting = true;
       field('google-connect').disabled = true;
       field('portal-error').hidden = true;
+      const current = generation;
       client = google.accounts.oauth2.initTokenClient({client_id: config.clientId, scope,
         include_granted_scopes: false,
         error_callback: error,
         callback: response => {
+          if (current !== generation) return;
           connecting = false; field('google-connect').disabled = false;
           if (response.error || !response.access_token || !google.accounts.oauth2.hasGrantedAllScopes(response, scope) || !Number.isFinite(Number(response.expires_in)) || Number(response.expires_in) < 60) { clear(); error(); return; }
           token = response.access_token;
@@ -61,10 +79,7 @@ const Portal = (() => {
           clearTimeout(expiryTimer);
           expiryTimer = setTimeout(clear, expires - Date.now());
           try { localStorage.setItem('dex.portal-settings', JSON.stringify(config)); } catch {}
-          try { localStorage.removeItem('dex.portal-auto-connect-disabled'); } catch {}
-          field('portal-login').hidden = true;
-          field('portal-session').hidden = false;
-          document.dispatchEvent(new Event('portal-connected'));
+          showConnected();
         }});
       client.requestAccessToken({prompt: ''});
     } catch { error(); }
@@ -109,9 +124,11 @@ const Portal = (() => {
     });
   }
   async function summary() {
-    const data = await SheetsReader.decode((await request('DEX_app!A:E')).values);
+    const current = generation;
+    const data = Snapshot.connected ? await Snapshot.summary() : await SheetsReader.decode((await request('DEX_app!A:E')).values);
+    if (current !== generation) throw new Error('Session ended');
     receipts = data.remote_editing?.receipts || [];
-    if (data.remote_editing?.enabled) {
+    if (data.remote_editing?.enabled && token && Date.now() < expires) {
       try {
         const rows = await queue();
         data.remote_editing.requests = [...new Map(rows.map(row => [row.id, {
@@ -124,7 +141,7 @@ const Portal = (() => {
   }
   function canEdit() { return !!editToken && !!token && Date.now() < Math.min(editExpires, expires); }
   function authorizeEdits() {
-    if (!token || !sessionConfig || editConnecting) return;
+    if (editConnecting || (!Snapshot.connected && !token)) return;
     const current = generation;
     editConnecting = true;
     field('google-edit').disabled = true;
@@ -136,15 +153,23 @@ const Portal = (() => {
       finish();
     };
     try {
-      const editClient = google.accounts.oauth2.initTokenClient({client_id: sessionConfig.clientId,
+      const config = sessionConfig || settings();
+      const editClient = google.accounts.oauth2.initTokenClient({client_id: config.clientId,
         scope: editScope, include_granted_scopes: false, error_callback: denied,
         callback: response => {
           if (current !== generation) { finish(); return; }
           if (response.error || !response.access_token || !google.accounts.oauth2.hasGrantedAllScopes(response, editScope) || !Number.isFinite(Number(response.expires_in)) || Number(response.expires_in) < 60) { denied(); return; }
           editToken = response.access_token;
           editExpires = Date.now() + (Math.min(Number(response.expires_in), 3600) - 30) * 1000;
-          try { localStorage.setItem('dex.portal-auto-edit', 'true'); } catch {}
+          token = editToken;
+          expires = editExpires;
+          sessionConfig = config;
+          clearTimeout(expiryTimer);
+          expiryTimer = setTimeout(clear, expires - Date.now());
+          try { localStorage.setItem('dex.portal-settings', JSON.stringify(config)); } catch {}
+          field('google-disconnect').hidden = false;
           finish();
+          document.dispatchEvent(new Event('portal-connected'));
         }});
       editClient.requestAccessToken({prompt: ''});
     } catch { denied(); }
@@ -175,31 +200,43 @@ const Portal = (() => {
   }
   if (enabled) {
     field('portal-login').hidden = false;
+    field('snapshot-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      field('snapshot-link').disabled = true;
+      field('snapshot-error').hidden = true;
+      const value = field('snapshot-key').value.trim();
+      field('snapshot-key').value = '';
+      try {
+        await Snapshot.pair(value);
+        showConnected();
+      } catch {
+        field('snapshot-error').textContent = 'No se pudo vincular. Revisa la clave, la publicaci\u00f3n y el almacenamiento del navegador.';
+        field('snapshot-error').hidden = false;
+      } finally { field('snapshot-link').disabled = false; }
+    });
     try {
       const saved = JSON.parse(localStorage.getItem('dex.portal-settings') || 'null');
       if (saved) { field('google-client').value = saved.clientId || ''; field('google-sheet').value = saved.spreadsheet || ''; }
     } catch {}
     field('google-form').addEventListener('submit', connect);
-    field('google-disconnect').addEventListener('click', () => {
-      try { localStorage.setItem('dex.portal-auto-connect-disabled', 'true'); } catch {}
-      clear();
-    });
+    field('google-disconnect').addEventListener('click', clear);
     field('google-edit').addEventListener('click', authorizeEdits);
-    field('google-forget').addEventListener('click', () => {
+    field('google-forget').addEventListener('click', async () => {
+      try { await Snapshot.forget(); }
+      catch {
+        field('portal-edit-error').textContent = 'No se pudo borrar el dispositivo. Vuelve a intentarlo.';
+        field('portal-edit-error').hidden = false;
+        return;
+      }
       try { localStorage.removeItem('dex.portal-settings'); } catch {}
-      try { localStorage.removeItem('dex.portal-auto-connect-disabled'); } catch {}
+      try { localStorage.removeItem('dex.portal-auto-edit'); localStorage.removeItem('dex.portal-auto-connect-disabled'); } catch {}
       field('google-form').reset();
       clear();
     });
     document.addEventListener('visibilitychange', () => { if (!document.hidden && token && Date.now() >= expires) clear(); });
-    window.addEventListener('load', () => {
-      let disabled = false;
-      try { disabled = localStorage.getItem('dex.portal-auto-connect-disabled') === 'true'; } catch {}
-      if (!disabled && field('google-client').value && field('google-sheet').value) connect();
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (await Snapshot.restore()) showConnected();
     }, {once: true});
   }
-  function autoEditEnabled() {
-    try { return localStorage.getItem('dex.portal-auto-edit') === 'true'; } catch { return false; }
-  }
-  return {enabled, summary, submit, authorizeEdits, get autoEdit() { return autoEditEnabled(); }, get canEdit() { return canEdit(); }, get editConnecting() { return editConnecting; }, get connected() { return !!token && Date.now() < expires; }};
+  return {enabled, summary, submit, get persistent() { return Snapshot.connected; }, get cached() { return Snapshot.cached; }, get canEdit() { return canEdit(); }, get editConnecting() { return editConnecting; }, get connected() { return Snapshot.connected || (!!token && Date.now() < expires); }};
 })();

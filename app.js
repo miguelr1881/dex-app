@@ -258,7 +258,11 @@ function setNotice() {
   notice.classList.toggle('error', failedRefresh);
   notice.hidden = !snapshot?.demo && !failedRefresh && !offline;
   notice.textContent = failedRefresh ? (snapshot ? 'No se pudo actualizar. Se conserva la vista anterior.' : 'Resumen no disponible. Comprueba el servidor local y vuelve a actualizar.') : offline ? 'Sin conexi\u00f3n. No hay actualizaciones disponibles.' : 'Demostraci\u00f3n \u00b7 Datos de ejemplo, no tus saldos.';
-  if (Portal.enabled && failedRefresh) notice.textContent = 'No se pudo leer Sheets. Revisa la conexi\u00f3n y los permisos de Google.';
+  if (Portal.enabled && failedRefresh) notice.textContent = 'No se pudo actualizar el resumen. Se conserva la vista anterior si est\u00e1 disponible.';
+  if (Portal.enabled && Portal.persistent && Portal.cached && !failedRefresh) {
+    notice.hidden = false;
+    notice.textContent = '\u00daltima copia guardada. No se pudo comprobar una publicaci\u00f3n m\u00e1s reciente.';
+  }
 }
 function renderDistribution(accounts) {
   const grouped = {};
@@ -371,11 +375,12 @@ function renderRemoteEdits() {
   const container = select('#portal-edit-status');
   container.hidden = !status?.enabled;
   if (!status?.enabled) return;
+  if (Portal.persistent && !Portal.canEdit) { container.hidden = true; return; }
   if (!status.queue_available) { container.textContent = I18n.translate('Estado de cambios no disponible. Actualiza antes de editar.'); return; }
   const requests = status.requests || [];
   const pendingRequests = requests.filter(item => item.state === 'pending');
   const recent = requests.filter(item => item.state !== 'pending').slice(-3);
-  const labels = {pending: 'Pendiente de la pr\u00f3xima ejecuci\u00f3n horaria', applied: 'Aplicado', conflict: 'No aplicado: cambi\u00f3 en otra sesi\u00f3n. Revisa y vuelve a editar.', invalid: 'No aplicado: datos no v\u00e1lidos. Revisa y vuelve a editar.'};
+  const labels = {pending: 'Pendiente de la pr\u00f3xima ejecuci\u00f3n diaria', applied: 'Aplicado', conflict: 'No aplicado: cambi\u00f3 en otra sesi\u00f3n. Revisa y vuelve a editar.', invalid: 'No aplicado: datos no v\u00e1lidos. Revisa y vuelve a editar.'};
   container.innerHTML = [...pendingRequests, ...recent].map(item => `<p class="subtle">${escapeHTML(I18n.translate(item.kind === 'salary' ? 'Salario mensual' : 'Resta'))}: ${escapeHTML(I18n.translate(labels[item.state] || labels.invalid))}</p>`).join('');
   container.hidden = !requests.length;
 }
@@ -538,13 +543,14 @@ function renderDetail(detail) {
 function openDetail(kind, id) {
   if (!snapshot) return;
   if (Portal.enabled && ['salary', 'adjustment'].includes(kind)) {
-    if (!snapshot.remote_editing?.enabled || !snapshot.remote_editing.queue_available) { showToast('Edici\u00f3n remota no disponible. Actualiza el resumen.'); return; }
+    if (!snapshot.remote_editing?.enabled) { showToast('Edici\u00f3n remota no disponible. Actualiza el resumen.'); return; }
     if (!Portal.canEdit) {
       select('#portal-edit-consent').hidden = false;
       select('#portal-edit-consent').open = true;
       select('#portal-edit-consent').scrollIntoView({block: 'nearest'});
       showToast('Autoriza la edici\u00f3n con Google.'); return;
     }
+    if (!snapshot.remote_editing.queue_available) { showToast('Edici\u00f3n remota no disponible. Actualiza el resumen.'); return; }
     if (snapshot.remote_editing.requests?.some(item => item.kind === kind && item.state === 'pending')) { showToast('Hay un cambio pendiente. Actualiza antes de editar de nuevo.'); return; }
   }
   if (kind === 'connection' && snapshot.payroll?.configured && ['espp', 'asociacion'].includes(id)) {
@@ -626,8 +632,7 @@ async function load(userInitiated = false) {
     select('#mode-badge').textContent = data.demo ? 'DEMO' : 'LOCAL';
     select('#mode-badge').classList.toggle('demo', data.demo);
     render();
-    if (Portal.enabled && data.remote_editing?.enabled && Portal.autoEdit && !Portal.canEdit) Portal.authorizeEdits();
-    if (userInitiated) showToast(Portal.enabled ? 'Resumen de Sheets actualizado' : 'Resumen local actualizado');
+    if (userInitiated) showToast(Portal.enabled ? (Portal.cached ? 'Mostrando copia guardada' : 'Resumen publicado actualizado') : 'Resumen local actualizado');
   } catch {
     failedRefresh = true;
     setNotice();
@@ -637,7 +642,7 @@ async function load(userInitiated = false) {
   } finally { pending = false; select('#refresh').disabled = false; select('#refresh').classList.remove('spinning'); }
 }
 function setPrivacy(value) { hiddenAmounts = value; savePreference('privacy', value); renderPrivacy(); render(); icons(); }
-document.addEventListener('portal-connected', () => { document.body.classList.add('connected'); load(true); loadMarket(); });
+document.addEventListener('portal-connected', () => { document.body.classList.add('connected'); load(); loadMarket(); });
 document.addEventListener('portal-edit-permission', renderRemoteEdits);
 document.addEventListener('portal-disconnected', () => {
   snapshot = null; btcQuote = null; currentDetail = null;
@@ -704,4 +709,4 @@ window.addEventListener('online', setNotice);
 window.addEventListener('offline', setNotice);
 all('[data-version]').forEach(node => { node.textContent = VERSION; });
 updateCurrency(); renderPrivacy(); navigate(); icons(); I18n.refresh(); load();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});

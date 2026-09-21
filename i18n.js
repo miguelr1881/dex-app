@@ -4,13 +4,20 @@ const I18n = (() => {
   let language = 'es';
   try { if (localStorage.getItem('dex.language') === 'en') language = 'en'; } catch {}
   const catalog = new Map([
+    ['Clave del dispositivo', 'Device key'], ['Vincular dispositivo', 'Link device'],
+    ['Olvidar dispositivo', 'Forget device'], ['Conexi\u00f3n de Google', 'Google connection'],
+    ['Pendiente de la pr\u00f3xima ejecuci\u00f3n diaria', 'Waiting for the next daily run'],
+    ['Resumen publicado actualizado', 'Published summary refreshed'], ['Mostrando copia guardada', 'Showing saved copy'],
+    ['\u00daltima copia guardada. No se pudo comprobar una publicaci\u00f3n m\u00e1s reciente.', 'Last saved copy. Could not check for a newer publication.'],
+    ['No se pudo actualizar el resumen. Se conserva la vista anterior si est\u00e1 disponible.', 'Could not refresh the summary. The previous view is kept when available.'],
+    ['No se pudo vincular. Revisa la clave, la publicaci\u00f3n y el almacenamiento del navegador.', 'Could not link this device. Check the key, publication and browser storage.'],
+    ['No se pudo borrar el dispositivo. Vuelve a intentarlo.', 'Could not forget this device. Try again.'],
     ['Edici\u00f3n de salario y restas', 'Salary and deduction editing'],
     ['Autorizar edici\u00f3n con Google', 'Authorize editing with Google'],
     ['Google solicitar\u00e1 permiso para editar tus hojas de c\u00e1lculo. DEX solo enviar\u00e1 solicitudes al archivo configurado. No cambia permisos de Gmail, bancos ni inversiones.', 'Google will request permission to edit your spreadsheets. DEX only sends requests to the configured file. Gmail, bank and investment permissions do not change.'],
     ['Edici\u00f3n autorizada en esta sesi\u00f3n', 'Editing authorized for this session'],
     ['Edici\u00f3n no autorizada. La lectura sigue disponible.', 'Editing not authorized. Reading remains available.'],
     ['Estado de cambios no disponible. Actualiza antes de editar.', 'Request status unavailable. Refresh before editing.'],
-    ['Pendiente de la pr\u00f3xima ejecuci\u00f3n horaria', 'Waiting for the next hourly run'],
     ['Aplicado', 'Applied'], ['Resta', 'Deduction'],
     ['No aplicado: cambi\u00f3 en otra sesi\u00f3n. Revisa y vuelve a editar.', 'Not applied: changed in another session. Review and edit again.'],
     ['No aplicado: datos no v\u00e1lidos. Revisa y vuelve a editar.', 'Not applied: invalid data. Review and edit again.'],

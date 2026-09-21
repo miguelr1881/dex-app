@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; img-src 'self' https://*.googleusercontent.com; connect-src 'self' https://sheets.googleapis.com https://accounts.google.com/gsi/ https://api.coinbase.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <meta name="dex-build" content="0.7.0-edits1">
+  <meta name="dex-build" content="0.7.0-device1">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f7f8fa">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,6 +20,7 @@
   <script src="./lucide.js" defer></script>
   <script src="./i18n.js" defer></script>
   <script src="./sheets-reader.js" defer></script>
+  <script src="./snapshot.js" defer></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./portal.js" defer></script>
   <script src="./app.js" defer></script>
@@ -47,12 +48,19 @@
       <div id="banner" class="notice" role="status" hidden></div>
       <section id="portal-login" class="settings-group" hidden>
         <h1>DEX</h1>
+        <form id="snapshot-form" class="adjustment-form">
+          <label>Clave del dispositivo<input id="snapshot-key" type="password" required pattern="[a-fA-F0-9]{64}" minlength="64" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
+          <p id="snapshot-error" class="form-error" role="alert" hidden></p>
+          <div class="form-actions"><button id="snapshot-link" class="primary-action" type="submit"><i data-lucide="link"></i>Vincular dispositivo</button></div>
+        </form>
+        <details id="google-configuration"><summary>Conexi&#243;n de Google</summary>
         <form id="google-form" class="adjustment-form">
           <label>Cliente web de Google<input id="google-client" required autocomplete="off" autocapitalize="none" spellcheck="false"></label>
           <label>ID del archivo de Sheets<input id="google-sheet" required autocomplete="off" autocapitalize="none" spellcheck="false"></label>
           <p id="portal-error" class="form-error" role="alert" hidden></p>
           <div class="form-actions"><button id="google-connect" class="primary-action" type="submit">Continuar con Google</button></div>
         </form>
+        </details>
       </section>
       <section id="portal-session" class="settings-group" hidden><div class="section-heading"><span class="subtle">Sheets privado</span><button id="google-disconnect" class="text-action" type="button">Cerrar sesi&#243;n</button></div><p id="portal-date" class="subtle"></p><details id="portal-edit-consent" hidden><summary>Edici&#243;n de salario y restas</summary><p class="subtle">Google solicitar&#225; permiso para editar tus hojas de c&#225;lculo. DEX solo enviar&#225; solicitudes al archivo configurado. No cambia permisos de Gmail, bancos ni inversiones.</p><button id="google-edit" class="text-action" type="button"><i data-lucide="pencil"></i>Autorizar edici&#243;n con Google</button></details><p id="portal-edit-permission" class="subtle" hidden></p><p id="portal-edit-error" class="form-error" role="alert" hidden></p><div id="portal-edit-status" role="status" hidden></div><button id="google-forget" class="text-action" type="button">Olvidar conexi&#243;n</button></section>
       <section id="resumen" class="view" aria-labelledby="summary-heading">
