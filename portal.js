@@ -120,7 +120,7 @@ const Portal = (() => {
       if (row.length !== 2 || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/.test(row[0]) || typeof row[1] !== 'string' || row[1].length > 4096) throw new Error('Invalid request queue');
       let command;
       try { command = JSON.parse(row[1]); } catch { command = {}; }
-      return {id: row[0], text: row[1], kind: ['salary', 'adjustment'].includes(command?.kind) ? command.kind : 'unknown'};
+      return {id: row[0], text: row[1], kind: ['salary', 'adjustment', 'planning'].includes(command?.kind) ? command.kind : 'unknown'};
     });
   }
   async function summary() {
@@ -179,7 +179,7 @@ const Portal = (() => {
     if (submitting) throw new Error(I18n.translate('Ya hay un env\u00edo en curso.'));
     const current = generation;
     const text = JSON.stringify({version: 1, kind, change});
-    if (text.length > 4096 || !['salary', 'adjustment'].includes(kind)) throw new Error('Invalid change');
+    if (text.length > 4096 || !['salary', 'adjustment', 'planning'].includes(kind)) throw new Error('Invalid change');
     const identifier = attempts.get(text) || crypto.randomUUID();
     attempts.set(text, identifier);
     submitting = true;

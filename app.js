@@ -38,7 +38,7 @@ const selectionNames = {...Object.fromEntries(Object.entries(sources).map(([key,
   'association-personal': 'Asociaci\u00f3n \u00b7 ahorro personal', 'association-employer': 'Asociaci\u00f3n \u00b7 aporte patronal'};
 let excludedSources = new Set();
 try { const saved = JSON.parse(preference('excluded-sources', '[]')); if (Array.isArray(saved)) excludedSources = new Set(saved.filter(key => Object.hasOwn(selectionNames, key))); } catch {}
-let historyPeriod = 'all';
+let historyPeriod = '30';
 let historyMetric = 'worth';
 let btcQuote = null;
 let marketPending = false;
@@ -49,7 +49,7 @@ let chartModel = null;
 
 function selectChartPoint(index, active = true) {
   if (!chartModel || hiddenAmounts) return;
-  const {chart, context, image, points, denomination, width, scale} = chartModel;
+  const {chart, context, image, points, denomination, width, height, scale, color} = chartModel;
   const selected = Math.max(0, Math.min(points.length - 1, index));
   const point = points[selected];
   chartSelection = point.date;
@@ -60,18 +60,55 @@ function selectChartPoint(index, active = true) {
   chart.setAttribute('aria-valuenow', String(selected));
   chart.setAttribute('aria-valuetext', `${dateLabel(point.date, true)}: ${money(point.value, denomination)}`);
   if (!active) return;
+  if (chartModel.scrubbed !== selected && chartModel.scrubbed != null && typeof navigator.vibrate === 'function') { try { navigator.vibrate(3); } catch {} }
+  chartModel.scrubbed = selected;
+  chart.closest('.history-section').classList.add('scrubbing');
   context.save();
   context.setTransform(scale, 0, 0, scale, 0, 0);
-  context.strokeStyle = '#8c9c98'; context.lineWidth = 1; context.setLineDash([3, 4]);
-  context.beginPath(); context.moveTo(point.horizontal, 28); context.lineTo(point.horizontal, 174); context.stroke();
-  context.setLineDash([]); context.fillStyle = '#ffffff'; context.strokeStyle = '#19795c'; context.lineWidth = 2.5;
-  context.beginPath(); context.arc(Math.min(width - 6, Math.max(6, point.horizontal)), point.vertical, 5, 0, Math.PI * 2); context.fill(); context.stroke();
+  const themeStyle = getComputedStyle(document.documentElement);
+  context.fillStyle = themeStyle.getPropertyValue('--chart-mask');
+  context.fillRect(point.horizontal, 0, width - point.horizontal, height);
+  context.strokeStyle = themeStyle.getPropertyValue('--chart-guide'); context.lineWidth = 1;
+  context.beginPath(); context.moveTo(point.horizontal, 4); context.lineTo(point.horizontal, height - 4); context.stroke();
+  context.fillStyle = color; context.strokeStyle = themeStyle.getPropertyValue('--bg'); context.lineWidth = 3;
+  context.beginPath(); context.arc(Math.min(width - 7, Math.max(7, point.horizontal)), point.vertical, 6, 0, Math.PI * 2); context.fill(); context.stroke();
   context.restore();
+  if (currentView === 'resumen' && historyMetric === 'worth' && chartModel.first != null) {
+    chartModel.scrubbing = true;
+    select('#balance').innerHTML = money(point.value, denomination, true);
+    select('#balance-change').innerHTML = changeMarkup(point.value, chartModel.first, denomination);
+  }
 }
+function endScrub() {
+  if (!chartModel) return;
+  chartModel.scrubbed = null;
+  chartModel.chart.closest('.history-section').classList.remove('scrubbing');
+  if (chartModel.scrubbing) {
+    chartModel.scrubbing = false;
+    select('#balance').innerHTML = balanceMarkup;
+    select('#balance-change').innerHTML = changeSummary;
+  }
+  selectChartPoint(chartModel.points.length - 1, false);
+}
+function changeMarkup(value, base, denomination) {
+  const delta = decimal(value) - decimal(base);
+  const reference = decimal(base);
+  const percent = reference > 0n ? Math.abs(Number(delta * 100000n / reference) / 1000).toFixed(2) : null;
+  const period = {30: '1M', 90: '3M', all: I18n.translate('Todo')}[historyPeriod];
+  return `<span class="trend${delta < 0n ? ' down' : ''}">${money(decimalString(delta < 0n ? -delta : delta), denomination)}${percent == null ? '' : ` (${percent}%)`}</span><span class="period">${escapeHTML(period)}</span>`;
+}
+let balanceMarkup = '';
+let changeSummary = '';
+let lastMousePosition = null;
+document.addEventListener('pointermove', event => {
+  if (event.pointerType === 'mouse') lastMousePosition = {horizontal: event.clientX, vertical: event.clientY};
+}, {passive: true});
 
 function chartPointer(event) {
   if (!chartModel || hiddenAmounts || event.isPrimary === false) return;
   if (event.type === 'pointermove' && event.pointerType !== 'mouse' && !event.buttons) return;
+  if (event.type === 'pointermove' && event.pointerType === 'mouse'
+      && lastMousePosition?.horizontal === event.clientX && lastMousePosition?.vertical === event.clientY) return;
   const bounds = chartModel.chart.getBoundingClientRect();
   const horizontal = (event.clientX - bounds.left) * chartModel.width / bounds.width;
   let nearest = 0;
@@ -145,7 +182,9 @@ function positionProfit(accounts) {
     ? decimalString(positions.reduce((sum, position) => sum + decimal(position.unrealized_pnl), 0n)) : null;
 }
 function renderHistory() {
+  endScrub();
   chartModel = null;
+  all('[data-period]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.period === historyPeriod)));
   const history = snapshot.history || {state: 'not_recording', points: []};
   const lastDate = history.points.at(-1)?.date;
   const cutoff = lastDate ? Date.parse(lastDate + 'T12:00:00Z') - Number(historyPeriod) * 86400000 : 0;
@@ -153,9 +192,19 @@ function renderHistory() {
     value: ['btc', 'usdt', 'usdc'].includes(historyMetric) ? point.crypto_values_usd?.[historyMetric.toUpperCase()] ?? null : historyMetric === 'stocks' ? point.stock_unrealized_usd ?? null : currency === 'TOTAL' ? selectedTotal(point.total_usd).net : point.adjusted_totals[currency] ?? null}));
   const known = points.filter(point => point.value != null);
   const denomination = historyMetric !== 'worth' || currency === 'TOTAL' ? 'USD' : currency;
+  const falling = known.length > 1 && decimal(known.at(-1).value) < decimal(known[0].value);
+  select('.history-section').style.setProperty('--trend', falling ? 'var(--down)' : 'var(--up)');
+  if (historyMetric === 'worth') {
+    select('#balance-change').style.setProperty('--trend', falling ? 'var(--down)' : 'var(--up)');
+    changeSummary = hiddenAmounts || known.length < 2 ? '' : changeMarkup(known.at(-1).value, known[0].value, denomination);
+    select('#balance-change').innerHTML = changeSummary;
+  }
   const chart = select('#history-chart');
   chart.hidden = hiddenAmounts || !known.length;
   select('#chart-readout').hidden = chart.hidden;
+  select('#chart-range').hidden = chart.hidden;
+  const rangeDates = new Intl.DateTimeFormat(I18n.locale, {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'});
+  select('#chart-range').innerHTML = chart.hidden ? '' : [points[0].date, points.at(-1).date].map(date => `<time datetime="${escapeHTML(date)}">${escapeHTML(rangeDates.format(new Date(date + 'T12:00:00Z')))}</time>`).join('');
   select('#chart-date').textContent = '';
   select('#chart-value').textContent = '';
   chart.removeAttribute('aria-valuetext');
@@ -163,10 +212,13 @@ function renderHistory() {
   select('#history-summary').innerHTML = known.length ? money(known.at(-1).value, denomination) : '\u2014';
   const delta = known.length > 1 ? decimalString(decimal(known.at(-1).value) - decimal(known[0].value)) : null;
   const metricNote = historyMetric === 'stocks' ? I18n.translate('Ganancia de posiciones abiertas.') : historyMetric !== 'worth' ? I18n.translate('Valor de la posicion, no rentabilidad.') : '';
-  select('#history-note').innerHTML = hiddenAmounts ? 'Importes ocultos.' : history.state === 'unavailable' ? 'Historial no disponible.' : !known.length ? 'Sin datos en este periodo.' : `${delta != null ? `${I18n.language === 'en' ? 'Change' : 'Cambio'} ${money(delta, denomination)}` : I18n.translate(`Historial desde el ${escapeHTML(dateLabel(known[0].date))}.`)} ${metricNote}`;
+  select('#history-note').innerHTML = hiddenAmounts ? 'Importes ocultos.' : history.state === 'unavailable' ? 'Historial no disponible.' : !known.length ? 'Sin datos en este periodo.' : historyMetric === 'worth' ? (known.length < 2 ? I18n.translate(`Historial desde el ${escapeHTML(dateLabel(known[0].date))}.`) : '') : `${delta != null ? `${I18n.language === 'en' ? 'Change' : 'Cambio'} ${money(delta, denomination)}` : I18n.translate(`Historial desde el ${escapeHTML(dateLabel(known[0].date))}.`)} ${metricNote}`;
   select('#history-summary').hidden = true;
   select('#history-heading').textContent = historyMetric === 'worth' ? I18n.translate('Evoluci\u00f3n') : historyMetric === 'stocks' ? I18n.translate('Evoluci\u00f3n de ganancias') : `${historyMetric.toUpperCase()} \u00b7 ${I18n.translate('Valor USD')}`;
   select('#history-rows').innerHTML = hiddenAmounts ? '' : points.slice().reverse().map(point => line(dateLabel(point.date, true), point.value == null ? 'Sin dato' : money(point.value, denomination))).join('');
+  select('#history-milestones')?.remove();
+  const milestones = historyMetric === 'worth' && !hiddenAmounts && points.length ? (snapshot.planning?.items || []).filter(item => item.kind === 'milestone' && item.date >= points[0].date && item.date <= points.at(-1).date) : [];
+  if (milestones.length) select('#history-observations').insertAdjacentHTML('afterend', `<details id="history-milestones" class="disclosure"><summary>${I18n.translate('Hitos del periodo')}</summary>${milestones.map(item => `<button class="setting-row" data-plan-edit="${escapeHTML(item.id)}"><span data-no-translate>${escapeHTML(item.name)}</span><span class="small-label">${escapeHTML(dateLabel(item.date))}</span>${icon('pencil')}</button>`).join('')}</details>`);
   chart.setAttribute('aria-label', hiddenAmounts ? I18n.translate('Importes ocultos') : `${I18n.translate('Observaciones')} ${historyMetric.toUpperCase()} (${denomination})`);
   chart.setAttribute('aria-valuemin', '0');
   chart.setAttribute('aria-valuemax', String(Math.max(0, known.length - 1)));
@@ -174,7 +226,7 @@ function renderHistory() {
   context.clearRect(0, 0, chart.width, chart.height);
   if (chart.hidden) return;
   const width = Math.max(240, chart.clientWidth);
-  const height = 210;
+  const height = 200;
   const scale = Math.min(devicePixelRatio || 1, 3);
   chart.width = Math.round(width * scale); chart.height = Math.round(height * scale);
   context.scale(scale, scale);
@@ -184,27 +236,39 @@ function renderHistory() {
   const range = maximum - minimum;
   const start = Date.parse(points[0].date + 'T12:00:00Z');
   const end = Date.parse(points.at(-1).date + 'T12:00:00Z');
-  const horizontal = point => end === start ? width / 2 : 14 + (Date.parse(point.date + 'T12:00:00Z') - start) / (end - start) * (width - 28);
-  const vertical = point => range === 0n ? 104 : 158 - Number((decimal(point.value) - minimum) * 12000n / range) / 100;
-  context.font = `11px ${getComputedStyle(document.body).fontFamily}`;
-  context.strokeStyle = '#dfe5e5'; context.lineWidth = 1;
-  for (const level of [38, 98, 158]) { context.beginPath(); context.moveTo(0, level); context.lineTo(width, level); context.stroke(); }
-  context.fillStyle = '#59696b'; context.textAlign = 'left';
-  context.fillText(money(decimalString(maximum), denomination), 0, 17);
-  context.fillText(dateLabel(points[0].date), 0, 198);
-  context.textAlign = 'right'; context.fillText(dateLabel(points.at(-1).date), width, 198);
-  context.strokeStyle = '#267d71'; context.lineWidth = 2.5;
+  const inset = 18;
+  const horizontal = point => end === start ? width / 2 : inset + (Date.parse(point.date + 'T12:00:00Z') - start) / (end - start) * (width - inset * 2);
+  const vertical = point => range === 0n ? height / 2 : 20 + (1 - Number((decimal(point.value) - minimum) * 10000n / range) / 10000) * (height - 40);
+  const themeStyle = getComputedStyle(document.documentElement);
+  const color = themeStyle.getPropertyValue(falling ? '--down' : '--up').trim();
+  if (known.length > 1) {
+    context.save(); context.setLineDash([1.5, 5]); context.lineCap = 'round'; context.strokeStyle = themeStyle.getPropertyValue('--chart-guide'); context.lineWidth = 1.5;
+    const level = vertical(known[0]);
+    context.beginPath(); context.moveTo(0, level); context.lineTo(width, level); context.stroke(); context.restore();
+  }
+  context.strokeStyle = color; context.lineWidth = 2.4; context.lineJoin = 'round'; context.lineCap = 'round';
+  context.beginPath();
   let previous = null;
+  let run = 0;
+  const isolated = [];
   points.forEach(point => {
-    if (point.value == null) { previous = null; return; }
-    const position = {horizontal: horizontal(point), vertical: vertical(point), date: Date.parse(point.date + 'T12:00:00Z')};
-    if (previous && position.date - previous.date <= 86400000) {
-      context.beginPath(); context.moveTo(previous.horizontal, previous.vertical); context.lineTo(position.horizontal, position.vertical); context.stroke();
-    }
-    context.fillStyle = '#267d71'; context.beginPath(); context.arc(position.horizontal, position.vertical, 3.5, 0, Math.PI * 2); context.fill();
+    if (point.value == null) { if (run === 1) isolated.push(previous); previous = null; run = 0; return; }
+    const position = {horizontal: horizontal(point), vertical: vertical(point)};
+    if (previous) { context.lineTo(position.horizontal, position.vertical); run += 1; }
+    else { if (run === 1) isolated.push(previous); context.moveTo(position.horizontal, position.vertical); run = 1; }
     previous = position;
   });
-  chartModel = {chart, context, width, scale, denomination, image: context.getImageData(0, 0, chart.width, chart.height),
+  if (run === 1) isolated.push(previous);
+  context.stroke();
+  context.fillStyle = color;
+  isolated.forEach(position => { context.beginPath(); context.arc(position.horizontal, position.vertical, 3, 0, Math.PI * 2); context.fill(); });
+  const last = known.at(-1);
+  context.globalAlpha = .22; context.beginPath(); context.arc(horizontal(last), vertical(last), 9, 0, Math.PI * 2); context.fill();
+  context.globalAlpha = 1; context.beginPath(); context.arc(horizontal(last), vertical(last), 4, 0, Math.PI * 2); context.fill();
+  context.fillStyle = themeStyle.getPropertyValue('--tint').trim();
+  milestones.forEach(item => { context.beginPath(); context.arc(horizontal(item), height - 6, 3, 0, Math.PI * 2); context.fill(); });
+  chartModel = {chart, context, width, height, scale, denomination, color, first: historyMetric === 'worth' && known.length > 1 ? known[0].value : null,
+    image: context.getImageData(0, 0, chart.width, chart.height),
     points: known.map(point => ({...point, horizontal: horizontal(point), vertical: vertical(point)}))};
   const selected = known.findIndex(point => point.date === chartSelection);
   selectChartPoint(selected < 0 ? known.length - 1 : selected, document.activeElement === chart);
@@ -305,37 +369,47 @@ function accountTitle(account) {
 function entity(source) { return sources[source] || {name: 'Otra cuenta', icon: 'wallet', category: 'other'}; }
 function entityIcon(source) { const data = entity(source); return `<span class="entity-icon ${escapeHTML(source)}">${data.short ? escapeHTML(data.short) : icon(data.icon)}</span>`; }
 function accountRow(account) {
-  return `<button class="account-row" data-account="${escapeHTML(account.id)}" aria-label="Abrir ${escapeHTML(entity(account.source).name)} ${escapeHTML(accountTitle(account))}">
+  return `<button class="account-row" data-account="${escapeHTML(account.id)}" data-source="${escapeHTML(account.source)}" aria-label="Abrir ${escapeHTML(entity(account.source).name)} ${escapeHTML(accountTitle(account))}">
     ${entityIcon(account.source)}<span class="account-info"><span class="account-name">${escapeHTML(accountTitle(account))}</span><span class="account-sub">${escapeHTML(account.source === 'ibkr' ? 'Acciones y efectivo' : entity(account.source).name)}</span></span>
     <span class="account-amount sensitive">${money(account.balance, account.currency)}</span>${icon('chevron-right').replace('<i ', '<i class="account-chevron" ')}
   </button>`;
 }
+let toastToken = 0;
 function showToast(message) {
   clearTimeout(toastTimer);
-  select('#toast').textContent = message;
-  select('#toast').hidden = false;
-  toastTimer = setTimeout(() => { select('#toast').hidden = true; }, 3200);
+  const toast = select('#toast');
+  const token = ++toastToken;
+  toast.textContent = message;
+  toast.hidden = false;
+  toastTimer = setTimeout(() => {
+    const hide = () => { if (token === toastToken) toast.hidden = true; };
+    if (DexNative.reduced()) { hide(); return; }
+    toast.animate([{opacity: 1, transform: 'translate(-50%, 0)'}, {opacity: 0, transform: 'translate(-50%, -18px) scale(.94)'}], {duration: 260, easing: 'cubic-bezier(.4, 0, 1, 1)', fill: 'forwards'})
+      .finished.then(animation => { hide(); animation.cancel(); }, hide);
+  }, 2800);
 }
 function setNotice() {
   const notice = select('#banner');
   const offline = !navigator.onLine;
   notice.classList.toggle('error', failedRefresh);
+  notice.dataset.state = failedRefresh ? 'error' : offline ? 'offline' : snapshot?.demo ? 'demo' : '';
   notice.hidden = !snapshot?.demo && !failedRefresh && !offline;
   notice.textContent = failedRefresh ? (snapshot ? 'No se pudo actualizar. Se conserva la vista anterior.' : 'Resumen no disponible. Comprueba el servidor local y vuelve a actualizar.') : offline ? 'Sin conexi\u00f3n. No hay actualizaciones disponibles.' : 'Demostraci\u00f3n \u00b7 Datos de ejemplo, no tus saldos.';
   if (Portal.enabled && failedRefresh) notice.textContent = 'No se pudo actualizar el resumen. Se conserva la vista anterior si est\u00e1 disponible.';
   if (Portal.enabled && Portal.persistent && Portal.cached && !failedRefresh) {
     notice.hidden = false;
+    notice.dataset.state = 'cached';
     notice.textContent = '\u00daltima copia guardada. No se pudo comprobar una publicaci\u00f3n m\u00e1s reciente.';
   }
 }
-const allocationColors = {BAC:'#386f89', MultiMoney:'#318777', ROP:'#83709e', FCL:'#b582a0',
-  INTC:'#3763a6', BTC:'#d19b32', USDT:'#38987b', VOO:'#ac5762', QQQM:'#6d83be',
-  ESPP:'#879748', Asociacion:'#568eaa', Otros:'#8b939b'};
+const allocationColors = {BAC:'#ff453a', MultiMoney:'#30d158', ROP:'#ffd60a', FCL:'#ac8e68',
+  INTC:'#0a84ff', BTC:'#ff9f0a', USDT:'#40c8e0', VOO:'#ff375f', QQQM:'#5e5ce6',
+  ESPP:'#bf5af2', Asociacion:'#64d2ff', Otros:'#636366'};
 let allocationModel = [];
 let allocationSelected = null;
 let allocationExpanded = false;
 let allocationAccounts = [];
-const otherColors = ['#728d9e', '#b68a6a', '#888b69', '#ab7994', '#688f84', '#7b80a0'];
+const otherColors = ['#8e8e93', '#d4a373', '#66d4cf', '#ff6482', '#7d7aff', '#e5c07b'];
 
 function allocationColor(name) {
   return allocationColors[name] || otherColors[Math.max(0, allocationModel.findIndex(item => item.name === name)) % otherColors.length];
@@ -386,6 +460,13 @@ function selectAllocation(name) {
   const total = allocationModel.filter(item => item.value > 0n).reduce((sum,item) => sum + item.value, 0n);
   select('.donut-center').innerHTML = selected ? `<span class="allocation-focus-name">${escapeHTML(allocationLabel(name))}</span><strong>${hiddenAmounts ? '\u2022\u2022' : allocationPercent(selected.value,total)}</strong><span class="allocation-focus-value">${money(decimalString(selected.value), currency === 'TOTAL' ? 'USD' : currency)}</span>` : `<span class="allocation-focus-name">${I18n.translate('Distribuci\u00f3n')}</span>${icon('chart-pie')}`;
   all('[data-allocation]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.allocation === name)));
+  if (selected && total > 0n) {
+    const entries = allocationModel.filter(item => item.value > 0n);
+    const preceding = entries.slice(0, entries.indexOf(selected)).reduce((sum, item) => sum + item.value, 0n);
+    const angle = 90 - Number((preceding * 2n + selected.value) * 180000n / total) / 1000;
+    select('.donut').style.transform = `rotate(${angle}deg)`;
+    select('.donut-center').style.transform = `rotate(${-angle}deg)`;
+  }
 }
 function renderDistribution(accounts) {
   allocationAccounts = accounts;
@@ -409,7 +490,7 @@ function renderDistribution(accounts) {
     cursor = end;
     return segment;
   });
-  select('.donut').style.background = !hiddenAmounts && entries.length ? `conic-gradient(from -90deg, ${stops.join(',')})` : '#e5e8eb';
+  select('.donut').style.background = !hiddenAmounts && entries.length ? `conic-gradient(from -90deg, ${stops.join(',')})` : 'var(--elevated-2)';
   select('#distribution-currency').textContent = currency === 'TOTAL' ? 'USD' : currency;
   select('#allocation-chart').setAttribute('aria-label', I18n.translate(hiddenAmounts ? 'Importes ocultos' : 'Distribuci\u00f3n de saldos positivos antes de restas'));
   select('#allocation-legend').innerHTML = entries.length ? entries.map(item => `<button class="allocation-item" data-allocation="${escapeHTML(item.name)}" aria-pressed="false"><span class="legend-dot"></span><span class="allocation-item-name">${escapeHTML(allocationLabel(item.name))}</span><strong>${hiddenAmounts ? '&bull;&bull;' : allocationPercent(item.value,total)}</strong></button>`).join('') : '<p class="subtle">Sin saldos positivos registrados.</p>';
@@ -422,7 +503,6 @@ function renderDistribution(accounts) {
   if (signedComponents.length) toggle.insertAdjacentHTML('beforebegin', `<div id="allocation-components" class="allocation-components">${signedComponents.map(([name, value]) => `<div class="allocation-component"><span data-no-translate>${escapeHTML(name)}</span><strong>${money(decimalString(value), currency === 'TOTAL' ? 'USD' : currency)}</strong></div>`).join('')}</div>`);
   all('[data-allocation]').forEach(button => button.addEventListener('click', () => {
     selectAllocation(button.dataset.allocation);
-    openDetail('allocation', button.dataset.allocation);
   }));
   selectAllocation(entries.some(item => item.name === allocationSelected) ? allocationSelected : entries[0]?.name);
   icons();
@@ -437,10 +517,12 @@ function renderSummary() {
   const gross = combined ? combinedTotal.gross : snapshot.totals[currency];
   select('#balance-label').textContent = combined ? (combinedTotal.excludedCount ? 'Tu selecci\u00f3n' : 'Total') : currency === 'USD' ? 'Cuentas en d\u00f3lares' : 'Cuentas en colones';
   select('#composition-open').hidden = !combined;
+  select('#composition-open').classList.toggle('active', combinedTotal.excludedCount > 0);
   select('#composition-label').textContent = combinedTotal.excludedCount ? `${combinedTotal.excludedCount} excluido(s)` : 'Incluir en el total';
   select('#deduction-breakdown').hidden = decimal(deduction) === 0n;
   select('#deduction-breakdown').innerHTML = line(combined ? 'Antes de restas' : 'Saldo registrado', gross == null ? '\u2014' : money(gross, denomination)) + line('Dinero excluido', '\u2212' + money(deduction, denomination));
   select('#balance').innerHTML = total == null ? '\u2014' : money(total, denomination, true);
+  balanceMarkup = select('#balance').innerHTML;
   renderFx(combined);
   select('#balance').classList.toggle('compact', !hiddenAmounts && select('#balance').textContent.length > 13);
   renderDistribution(combined ? combinedTotal.items.filter(item => item.usd_value != null).map(item => ({...item, balance: item.usd_value})) : accounts);
@@ -496,8 +578,10 @@ function renderPrivacy() {
 }
 function render() {
   if (!snapshot) return;
+  document.body.classList.remove('loading');
   renderSummary(); renderAccounts(); renderSettings(); renderPrivacy(); renderAdjustments(); renderPayroll(); renderHistory(); renderPerformance(); renderMarket(); renderAutomation(); setNotice();
-  if (currentDetail && !['adjustment', 'salary'].includes(currentDetail.kind) && select('#detail').open) renderDetail(currentDetail);
+  DexPlan.render();
+  if (currentDetail && !['adjustment', 'salary', 'planning'].includes(currentDetail.kind) && select('#detail').open) renderDetail(currentDetail);
   icons();
   if (Portal.enabled) {
     all('[data-new-adjustment], #salary-setting').forEach(button => { button.disabled = !snapshot.remote_editing?.enabled; });
@@ -524,7 +608,7 @@ function renderRemoteEdits() {
   const pendingRequests = requests.filter(item => item.state === 'pending');
   const recent = requests.filter(item => item.state !== 'pending').slice(-3);
   const labels = {pending: 'Pendiente de la pr\u00f3xima ejecuci\u00f3n diaria', applied: 'Aplicado', conflict: 'No aplicado: cambi\u00f3 en otra sesi\u00f3n. Revisa y vuelve a editar.', invalid: 'No aplicado: datos no v\u00e1lidos. Revisa y vuelve a editar.'};
-  container.innerHTML = [...pendingRequests, ...recent].map(item => `<p class="subtle">${escapeHTML(I18n.translate(item.kind === 'salary' ? 'Salario mensual' : 'Resta'))}: ${escapeHTML(I18n.translate(labels[item.state] || labels.invalid))}</p>`).join('');
+  container.innerHTML = [...pendingRequests, ...recent].map(item => `<p class="subtle">${escapeHTML(I18n.translate(item.kind === 'salary' ? 'Salario mensual' : item.kind === 'planning' ? 'Plan' : 'Resta'))}: ${escapeHTML(I18n.translate(labels[item.state] || labels.invalid))}</p>`).join('');
   container.hidden = !requests.length;
 }
 async function queueRemoteChange(kind, change) {
@@ -532,7 +616,8 @@ async function queueRemoteChange(kind, change) {
   const status = snapshot.remote_editing;
   status.requests ||= [];
   if (!status.requests.some(item => item.id === result.id)) status.requests.push({id: result.id, kind, state: 'pending'});
-  select('#detail').close(); currentDetail = null;
+  currentDetail = null;
+  closeSheet();
   render();
   showToast('Solicitud enviada. Pendiente de aplicar.');
   await load();
@@ -584,7 +669,7 @@ function renderSalaryForm() {
       const response = await fetch('/api/payroll/salary', {method: 'POST', headers: {'X-DEX-Client': 'pwa', 'Content-Type': 'application/json'}, credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(12000), body: JSON.stringify({monthly_salary: select('#salary-amount').value.trim().replace(',', '.'), revision})});
       if (!response.ok) throw new Error(response.status === 409 ? 'El salario cambi\u00f3 en otra vista. Cierra y actualiza.' : 'No se pudo confirmar el cambio. Revisa el importe y actualiza antes de reintentar.');
       const data = await response.json(); validateSnapshot(data); snapshot = data;
-      select('#detail').close(); currentDetail = null; render(); showToast('Salario programado para la siguiente quincena');
+      closeSheet(); currentDetail = null; render(); showToast('Salario programado para la siguiente quincena');
     } catch (error) { select('#salary-error').hidden = false; select('#salary-error').textContent = error.message; }
     finally { savingSalary = false; if (select('#salary-form button')) select('#salary-form button').disabled = false; }
   });
@@ -628,7 +713,7 @@ async function saveAdjustment(change) {
     const data = await response.json();
     validateSnapshot(data);
     snapshot = data;
-    select('#detail').close();
+    closeSheet();
     currentDetail = null;
     render();
     showToast(change.operation === 'delete' ? 'Resta eliminada' : 'Resta guardada');
@@ -638,7 +723,9 @@ async function saveAdjustment(change) {
 }
 function renderDetail(detail) {
   const container = select('#detail-content');
-  if (detail.kind === 'composition') {
+  if (detail.kind === 'planning') {
+    DexPlan.form(detail.id);
+  } else if (detail.kind === 'composition') {
     renderComposition();
   } else if (detail.kind === 'allocation') {
     const entry = allocationModel.find(item => item.name === detail.id);
@@ -664,13 +751,16 @@ function renderDetail(detail) {
     if (!account) { closeDetail(); return; }
     select('#detail-eyebrow').textContent = 'CUENTA';
     const componentNames = {stock_value: 'Posiciones', cash: 'Efectivo', interest_accruals: 'Intereses devengados', dividend_accruals: 'Dividendos devengados'};
-    container.innerHTML = `<div class="sheet-title">${entityIcon(account.source)}<div><h2 id="detail-title">${escapeHTML(entity(account.source).name)}</h2><p class="subtle">${escapeHTML(product(account))} &middot; ${escapeHTML(account.currency)}</p></div></div><p class="small-label">Saldo al corte</p><p class="detail-balance sensitive">${money(account.balance, account.currency)}</p><p class="subtle">${escapeHTML(dateLabel(account.as_of, true))}</p><div class="detail-block">${line('Disponibilidad', escapeHTML(availability[account.availability] || 'Por confirmar'))}${line('Valoraci\u00f3n', 'Estado de cuenta')}${line('Cotizaci\u00f3n en vivo', 'No aplicada')}</div>${account.components ? `<div class="detail-block"><h3>Composici\u00f3n del saldo</h3>${Object.entries(componentNames).filter(([key]) => account.components[key] != null).map(([key, label]) => line(label, money(account.components[key], account.currency))).join('')}</div>` : ''}${account.positions?.length ? `<div class="detail-block"><h3>Posiciones <span class="small-label">${account.positions.length}</span></h3>${account.positions.map(position => `<div class="detail-line"><span><strong class="position-symbol">${escapeHTML(position.symbol || 'Posici\u00f3n')}</strong><span class="position-name">${escapeHTML(position.description || '')}</span></span><span class="sensitive">${money(position.market_value, position.currency || account.currency)}<span class="position-name">${hiddenAmounts ? '\u2022\u2022' : escapeHTML(position.quantity ?? position.position ?? '\u2014')} unidades</span></span></div>`).join('')}</div><p class="detail-callout">Las posiciones ya forman parte del saldo de esta cuenta. No se suman de nuevo.</p>` : `<p class="detail-callout">Este es el saldo confirmado a la fecha del estado de cuenta, no un saldo bancario en vivo.</p>`}`;
+    container.innerHTML = `<div class="sheet-title" data-source="${escapeHTML(account.source)}">${entityIcon(account.source)}<div><h2 id="detail-title">${escapeHTML(entity(account.source).name)}</h2><p class="subtle">${escapeHTML(product(account))} &middot; ${escapeHTML(account.currency)}</p></div></div><p class="small-label">Saldo al corte</p><p class="detail-balance sensitive">${money(account.balance, account.currency)}</p><p class="subtle">${escapeHTML(dateLabel(account.as_of, true))}</p><div class="detail-block">${line('Disponibilidad', escapeHTML(availability[account.availability] || 'Por confirmar'))}${line('Valoraci\u00f3n', 'Estado de cuenta')}${line('Cotizaci\u00f3n en vivo', 'No aplicada')}</div>${account.components ? `<div class="detail-block"><h3>Composici\u00f3n del saldo</h3>${Object.entries(componentNames).filter(([key]) => account.components[key] != null).map(([key, label]) => line(label, money(account.components[key], account.currency))).join('')}</div>` : ''}${account.positions?.length ? `<div class="detail-block"><h3>Posiciones <span class="small-label">${account.positions.length}</span></h3>${account.positions.map(position => `<div class="detail-line"><span><strong class="position-symbol">${escapeHTML(position.symbol || 'Posici\u00f3n')}</strong><span class="position-name">${escapeHTML(position.description || '')}</span></span><span class="sensitive">${money(position.market_value, position.currency || account.currency)}<span class="position-name">${hiddenAmounts ? '\u2022\u2022' : escapeHTML(position.quantity ?? position.position ?? '\u2014')} unidades</span></span></div>`).join('')}</div><p class="detail-callout">Las posiciones ya forman parte del saldo de esta cuenta. No se suman de nuevo.</p>` : `<p class="detail-callout">Este es el saldo confirmado a la fecha del estado de cuenta, no un saldo bancario en vivo.</p>`}`;
   } else if (detail.kind === 'connection') {
     const source = snapshot.coverage.find(item => item.source === detail.id);
     const accounts = snapshot.accounts.filter(item => item.source === detail.id);
     const observed = source?.state === 'observed';
     select('#detail-eyebrow').textContent = 'CONEXI\u00d3N';
-    container.innerHTML = `<div class="sheet-title">${entityIcon(detail.id)}<h2 id="detail-title">${escapeHTML(entity(detail.id).name)}</h2></div>${line('Estado', observed ? 'Datos registrados' : 'Validaci\u00f3n pendiente')}${line('Acceso', 'Solo lectura')}${line('Cuentas observadas', String(accounts.length))}<p class="coverage-text">${detail.id === 'binance' ? 'Conector preparado. La conexi\u00f3n real y la cobertura de Spot y Earn est\u00e1n pendientes de validar desde el alojamiento final.' : observed ? 'Los importes conservan la fecha de cada estado de cuenta. Actualizar esta vista no solicita nuevos documentos al proveedor.' : 'Esta fuente a\u00fan no est\u00e1 incorporada al resumen.'}</p>${accounts.map(accountRow).join('')}${!observed ? '<p class="detail-callout">Una fuente pendiente no equivale a un saldo de cero.</p>' : ''}`;
+    container.innerHTML = `<div class="sheet-title" data-source="${escapeHTML(detail.id)}">${entityIcon(detail.id)}<h2 id="detail-title">${escapeHTML(entity(detail.id).name)}</h2></div>${line('Estado', observed ? 'Datos registrados' : 'Validaci\u00f3n pendiente')}${line('Acceso', 'Solo lectura')}${line('Cuentas observadas', String(accounts.length))}<p class="coverage-text">${detail.id === 'binance' ? 'Conector preparado. La conexi\u00f3n real y la cobertura de Spot y Earn est\u00e1n pendientes de validar desde el alojamiento final.' : observed ? 'Los importes conservan la fecha de cada estado de cuenta. Actualizar esta vista no solicita nuevos documentos al proveedor.' : 'Esta fuente a\u00fan no est\u00e1 incorporada al resumen.'}</p>${accounts.map(accountRow).join('')}${!observed ? '<p class="detail-callout">Una fuente pendiente no equivale a un saldo de cero.</p>' : ''}`;
+  } else if (detail.kind === 'install') {
+    select('#detail-eyebrow').textContent = 'DEX';
+    container.innerHTML = `<h2 id="detail-title">${I18n.translate('A\u00f1ade DEX a tu inicio')}</h2><p class="coverage-text">${I18n.translate('Se abre a pantalla completa y funciona sin conexi\u00f3n.')}</p><ol class="install-steps"><li><span>${I18n.translate('Toca Compartir')}</span>${icon('share')}</li><li><span>${I18n.translate('Elige A\u00f1adir a pantalla de inicio')}</span>${icon('square-plus')}</li><li><span>${I18n.translate('Confirma con A\u00f1adir')}</span>${icon('check')}</li></ol>`;
   } else {
     select('#detail-eyebrow').textContent = 'DATOS';
     const fx = snapshot.total_usd.fx;
@@ -707,9 +797,9 @@ function renderDetail(detail) {
   all('#detail-content .position-symbol, #detail-content .position-symbol + .position-name').forEach(node => node.setAttribute('data-no-translate', ''));
   icons();
 }
-function openDetail(kind, id) {
+function openDetail(kind, id, source) {
   if (!snapshot) return;
-  if (Portal.enabled && ['salary', 'adjustment'].includes(kind)) {
+  if (Portal.enabled && ['salary', 'adjustment', 'planning'].includes(kind)) {
     if (!snapshot.remote_editing?.enabled) { showToast('Edici\u00f3n remota no disponible. Actualiza el resumen.'); return; }
     if (!Portal.canEdit) {
       location.hash = 'ajustes';
@@ -726,21 +816,48 @@ function openDetail(kind, id) {
     kind = 'payroll'; id = id === 'asociacion' ? 'association' : 'espp';
   }
   currentDetail = {kind, id};
-  renderDetail(currentDetail);
   const dialog = select('#detail');
-  if (!dialog.open) dialog.showModal();
-  document.body.classList.add('modal-open');
-  dialog.scrollTop = 0;
-  select('#detail-close').focus({preventScroll: true});
+  const present = () => {
+    renderDetail(currentDetail);
+    if (!dialog.open) dialog.showModal();
+    document.body.classList.add('modal-open');
+    dialog.scrollTop = 0;
+    select('#detail-close').focus({preventScroll: true});
+  };
+  const opening = !dialog.open;
+  present();
+  if (!opening) return;
+  const target = source && kind === 'account' ? select('#detail .sheet-title') : null;
+  const card = source?.closest('#all-accounts') ? source : null;
+  if (card && target) DexNative.flyCard(card, target);
+  DexNative.presentSheet();
 }
-function closeDetail() { if (!savingAdjustment && !savingSalary) select('#detail').close(); }
+function closeSheet() {
+  const dialog = select('#detail');
+  if (!dialog.open || dialog.classList.contains('closing')) return;
+  DexNative.dismissSheet(() => { if (dialog.open) dialog.close(); });
+}
+function closeDetail() {
+  if (savingAdjustment || savingSalary || DexPlan.saving) return false;
+  closeSheet();
+  return true;
+}
+const scrollMemory = {};
+let currentRoute = '';
 function navigate() {
   const target = location.hash.slice(1) || 'resumen';
-  const view = ['resumen', 'rendimiento', 'cuentas', 'ajustes'].includes(target) ? target : 'resumen';
-  const changed = view !== currentView;
+  const planTitle = DexPlan.route(target);
+  const view = planTitle ? 'plan' : ['resumen', 'rendimiento', 'cuentas', 'ajustes'].includes(target) ? target : 'resumen';
+  const changed = target !== currentRoute;
+  if (changed) scrollMemory[currentRoute] = scrollY;
   all('.view').forEach(section => { section.hidden = section.id !== view; });
-  all('.navigation>a').forEach(link => { if (link.dataset.view === view) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
-  document.title = `${{resumen: 'Resumen', rendimiento: 'Rendimiento', cuentas: 'Cuentas', ajustes: 'Ajustes'}[view]} \u00b7 DEX`;
+  all('.navigation>a').forEach(link => { if (link.dataset.view === (view === 'plan' ? 'resumen' : view)) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
+  document.title = `${I18n.translate(planTitle || {resumen: 'Resumen', rendimiento: 'Rendimiento', cuentas: 'Cuentas', ajustes: 'Ajustes'}[view])} \u00b7 DEX`;
+  all('#app-menu a, #app-menu [data-menu-view]').forEach(link => {
+    const selected = (link.dataset.menuView || link.hash.slice(1)) === target;
+    if (selected) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
+  });
+  currentRoute = target;
   currentView = view;
   if (view === 'resumen' || view === 'rendimiento') {
     const performance = view === 'rendimiento';
@@ -752,9 +869,11 @@ function navigate() {
   }
   if (changed) {
     select('#main').focus({preventScroll: true});
-    window.scrollTo({top: 0, behavior: 'instant'});
-    requestAnimationFrame(() => window.scrollTo({top: 0, behavior: 'instant'}));
+    const top = scrollMemory[target] || 0;
+    window.scrollTo({top, behavior: 'instant'});
+    requestAnimationFrame(() => window.scrollTo({top, behavior: 'instant'}));
   }
+  DexNative.viewChanged(select('#' + view));
   loadMarket(); loadAutomation();
 }
 function validateSnapshot(data) {
@@ -804,6 +923,7 @@ async function load(userInitiated = false) {
     if (userInitiated) showToast(Portal.enabled ? (Portal.cached ? 'Mostrando copia guardada' : 'Resumen publicado actualizado') : 'Resumen local actualizado');
   } catch {
     failedRefresh = true;
+    document.body.classList.remove('loading');
     setNotice();
     if (!snapshot) {
       select('#all-accounts').innerHTML = '<p class="empty">Sin datos disponibles.</p>';
@@ -825,6 +945,8 @@ select('#privacy').addEventListener('click', () => setPrivacy(!hiddenAmounts));
 select('#language-setting').value = I18n.language;
 select('#language-setting').addEventListener('change', event => I18n.setLanguage(event.target.value));
 document.addEventListener('languagechange', () => { select('#language-setting').value = I18n.language; render(); navigate(); I18n.refresh(); });
+document.addEventListener('dex-theme-change', () => { if (snapshot) renderHistory(); });
+globalThis.addEventListener('dex-plan-saved', render);
 select('#privacy-setting').addEventListener('change', event => setPrivacy(event.target.checked));
 select('#refresh').addEventListener('click', () => load(true));
 select('#composition-open').addEventListener('click', () => openDetail('composition'));
@@ -856,7 +978,7 @@ document.addEventListener('click', event => {
   else if (event.target.closest('#salary-setting')) openDetail('salary');
   else if (event.target.closest('[data-new-adjustment]')) openDetail('adjustment');
   else if (adjustment) openDetail('adjustment', adjustment.dataset.adjustment);
-  else if (account) openDetail('account', account.dataset.account);
+  else if (account) openDetail('account', account.dataset.account, account);
   else if (connection) openDetail('connection', connection.dataset.connection);
 });
 select('#coverage-open').addEventListener('click', () => openDetail('coverage'));
@@ -866,6 +988,7 @@ select('#allocation-toggle').addEventListener('click', () => {
 });
 select('#history-chart').addEventListener('pointerdown', chartPointer);
 select('#history-chart').addEventListener('pointermove', chartPointer);
+for (const type of ['pointerup', 'pointerleave', 'pointercancel', 'blur']) select('#history-chart').addEventListener(type, event => { if (event.type !== 'pointerup' || event.pointerType !== 'mouse') endScrub(); });
 select('#history-chart').addEventListener('keydown', event => {
   if (!chartModel || hiddenAmounts || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
   event.preventDefault();
@@ -879,7 +1002,7 @@ document.addEventListener('keydown', event => {
 });
 select('#detail').addEventListener('click', event => { const bounds = event.currentTarget.getBoundingClientRect(); if (event.target === event.currentTarget && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) closeDetail(); });
 select('#detail').addEventListener('close', () => { currentDetail = null; document.body.classList.remove('modal-open'); });
-select('#detail').addEventListener('cancel', event => { if (savingAdjustment || savingSalary) event.preventDefault(); });
+select('#detail').addEventListener('cancel', event => { event.preventDefault(); closeDetail(); });
 select('#motion-setting').checked = preference('motion', 'false') === 'true';
 document.body.classList.toggle('reduce-motion', select('#motion-setting').checked);
 select('#motion-setting').addEventListener('change', event => { document.body.classList.toggle('reduce-motion', event.target.checked); savePreference('motion', event.target.checked); });
@@ -888,9 +1011,19 @@ function automaticRefresh() { if (!document.hidden && !select('#detail').open &&
 document.addEventListener('visibilitychange', automaticRefresh);
 setInterval(automaticRefresh, 60000);
 setInterval(() => { loadMarket(); loadAutomation(); }, 60000);
-window.addEventListener('hashchange', navigate);
-window.addEventListener('online', setNotice);
+window.addEventListener('hashchange', () => {
+  const next = location.hash.slice(1) || 'resumen';
+  if (next !== currentView && ['resumen', 'rendimiento', 'cuentas', 'ajustes'].includes(next)) DexNative.transition(navigate);
+  else navigate();
+});
+window.addEventListener('online', () => {
+  const notice = select('#banner');
+  notice.hidden = false;
+  notice.dataset.state = 'reconnecting';
+  notice.textContent = I18n.translate('Reconectando\u2026');
+  load().finally(setNotice);
+});
 window.addEventListener('offline', setNotice);
-all('[data-version]').forEach(node => { node.textContent = VERSION; });
+all('[data-version]').forEach(node => { node.textContent = select('meta[name="dex-build"]').content; });
 updateCurrency(); renderPrivacy(); navigate(); icons(); I18n.refresh(); load();
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(() => {});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').then(registration => DexNative.watch(registration)).catch(() => {});

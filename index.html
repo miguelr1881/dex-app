@@ -4,50 +4,99 @@
   <meta charset="utf-8">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; img-src 'self' https://*.googleusercontent.com; connect-src 'self' https://sheets.googleapis.com https://accounts.google.com/gsi/ https://api.coinbase.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <meta name="dex-build" content="0.7.0-crypto4">
+  <meta name="dex-build" content="0.9.0-plan4">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#f7f8fa">
+  <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="DEX">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="dark">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="description" content="Patrimonio personal">
   <title>DEX</title>
-  <link rel="icon" href="./icon.png" type="image/png">
-  <link rel="apple-touch-icon" href="./icon.png">
+  <link rel="icon" href="./icon.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./app.css">
+  <link rel="stylesheet" href="./dex.css">
   <link rel="stylesheet" href="./portal.css">
-  <script src="./lucide.js" defer></script>
+  <!-- launch-screens -->
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1320x2868.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2868x1320.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1206x2622.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2622x1206.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1260x2736.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 420px) and (device-height: 912px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2736x1260.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1290x2796.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2796x1290.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1179x2556.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2556x1179.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1284x2778.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2778x1284.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1170x2532.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2532x1170.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1125x2436.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2436x1125.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1080x2340.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 360px) and (device-height: 780px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2340x1080.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1242x2688.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2688x1242.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-828x1792.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-1792x828.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./splash/launch-1242x2208.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./splash/launch-2208x1242.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-750x1334.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-1334x750.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-640x1136.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-1136x640.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-2064x2752.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 1032px) and (device-height: 1376px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-2752x2064.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-2048x2732.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-2732x2048.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1210px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-1668x2420.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1210px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-2420x1668.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-1668x2388.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-2388x1668.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-1640x2360.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-2360x1640.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-1668x2224.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-2224x1668.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-1620x2160.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-2160x1620.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-1536x2048.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-2048x1536.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./splash/launch-1488x2266.png">
+  <link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./splash/launch-2266x1488.png">
+  <!-- /launch-screens -->
+  <script src="./icons.js" defer></script>
   <script src="./i18n.js" defer></script>
   <script src="./sheets-reader.js" defer></script>
   <script src="./snapshot.js" defer></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./portal.js" defer></script>
+  <script src="./native.js" defer></script>
+  <script src="./plan.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
-<body>
+<body class="loading">
   <a class="skip-link" href="#main">Ir al contenido</a>
   <div class="app">
     <header class="topbar">
-      <a class="brand" href="#resumen" aria-label="DEX, resumen"><img src="./icon.png" width="34" height="34" alt=""><span>DEX<span class="brand-dot">.</span></span></a>
-      <span class="desktop-caption">PERSONAL FINANCE</span>
+      <button id="menu-open" class="icon-button menu-open" type="button" aria-label="Abrir men&#250;" title="Men&#250;" aria-controls="app-menu" aria-expanded="false"><i data-lucide="menu"></i></button>
+      <span class="nav-title" id="nav-title" aria-hidden="true">Patrimonio</span>
       <div class="top-actions">
         <span id="mode-badge" class="mode-badge">LOCAL</span>
         <button class="icon-button" id="privacy" aria-label="Mostrar importes" aria-pressed="true" title="Mostrar importes"><i data-lucide="eye-off"></i></button>
         <button class="icon-button" id="refresh" aria-label="Actualizar resumen" title="Actualizar resumen"><i data-lucide="refresh-cw"></i></button>
       </div>
     </header>
-    <nav class="navigation" aria-label="Navegaci&#243;n principal">
-      <a href="#resumen" data-view="resumen" aria-current="page"><i data-lucide="layout-dashboard"></i><span>Resumen</span></a>
-      <a href="#rendimiento" data-view="rendimiento"><i data-lucide="chart-no-axes-combined"></i><span>Rendimiento</span></a>
-      <a href="#cuentas" data-view="cuentas"><i data-lucide="wallet-cards"></i><span>Cuentas</span></a>
-      <a href="#ajustes" data-view="ajustes"><i data-lucide="sliders-horizontal"></i><span>Ajustes</span></a>
-      <span class="nav-foot">DEX <span data-version>0.1.0</span><br>SOLO LECTURA</span>
-    </nav>
+    <div id="ptr" class="ptr" aria-hidden="true"><span></span></div>
     <main id="main" tabindex="-1">
       <div id="banner" class="notice" role="status" hidden></div>
-      <section id="portal-login" class="settings-group" hidden>
+      <section id="portal-login" class="onboarding" hidden>
+        <div class="onboarding-art" aria-hidden="true"><svg viewBox="0 0 220 176"><defs><linearGradient id="ob-a" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b8cff"/><stop offset="1" stop-color="#2a55e8"/></linearGradient><linearGradient id="ob-b" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3ff08f"/><stop offset="1" stop-color="#0fae5c"/></linearGradient><linearGradient id="ob-c" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2e33"/><stop offset="1" stop-color="#131416"/></linearGradient><radialGradient id="ob-glow" cx=".5" cy=".6" r=".55"><stop offset="0" stop-color="#34e07f" stop-opacity=".28"/><stop offset="1" stop-color="#34e07f" stop-opacity="0"/></radialGradient></defs><ellipse cx="110" cy="104" rx="120" ry="80" fill="url(#ob-glow)"/><rect x="26" y="8" width="168" height="104" rx="16" fill="url(#ob-a)" transform="rotate(-6 110 60)"/><rect x="26" y="36" width="168" height="104" rx="16" fill="url(#ob-b)" transform="rotate(-2 110 88)"/><rect x="26" y="64" width="168" height="104" rx="16" fill="url(#ob-c)"/><rect x="26.5" y="64.5" width="167" height="103" rx="15.5" fill="none" stroke="#fff" stroke-opacity=".14"/><path d="M44 146 L76 126 L98 136 L124 110 L146 120 L176 90" fill="none" stroke="#34e07f" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="176" cy="90" r="6" fill="#34e07f"/><rect x="42" y="80" width="38" height="8" rx="4" fill="#fff" fill-opacity=".5"/></svg></div>
         <h1>DEX</h1>
+        <p class="onboarding-lede">Tu patrimonio, claro y privado.</p>
         <form id="snapshot-form" class="adjustment-form">
           <label>Clave del dispositivo<input id="snapshot-key" type="password" required pattern="[a-fA-F0-9]{64}" minlength="64" maxlength="64" autocomplete="off" autocapitalize="none" spellcheck="false"></label>
           <p id="snapshot-error" class="form-error" role="alert" hidden></p>
@@ -62,62 +111,104 @@
         </form>
         </details>
       </section>
-      <section id="resumen" class="view" aria-labelledby="summary-heading">
-        <div class="page-heading"><h1 id="summary-heading">Patrimonio</h1><button class="icon-button" id="coverage-open" aria-label="Datos y tipo de cambio" title="Datos y tipo de cambio"><i data-lucide="info"></i></button></div>
-        <div class="summary-grid">
-          <section class="balance-panel" aria-label="Total del patrimonio">
-            <div class="balance-top"><span class="muted" id="balance-label">Tu patrimonio</span><div class="segmented" role="group" aria-label="Moneda"><button data-currency="TOTAL" aria-pressed="true">Todo USD</button><button data-currency="USD" aria-pressed="false">USD</button><button data-currency="CRC" aria-pressed="false">CRC</button></div></div>
-            <div class="balance-value sensitive" id="balance" aria-live="polite">••••••</div>
-            <div id="deduction-breakdown" class="deduction-breakdown" hidden></div>
-            <button id="composition-open" class="text-action" hidden><i data-lucide="list-filter"></i><span id="composition-label">Incluir en el total</span></button>
-            <div id="estimated-net-worth" class="estimated-net-worth" hidden></div>
-          </section>
-          <section class="distribution" aria-labelledby="distribution-heading">
-            <div class="section-heading"><h2 id="distribution-heading">Distribuci&#243;n</h2><span class="small-label" id="distribution-currency">USD</span></div>
-            <div class="allocation-chart" id="allocation-chart" role="img" aria-label="Distribuci&#243;n del patrimonio"><div class="donut"><div class="donut-center"><i data-lucide="wallet"></i></div></div></div>
-            <div id="allocation-legend" class="allocation-legend"></div>
-            <button id="allocation-toggle" class="text-action allocation-toggle" aria-expanded="false" aria-controls="allocation-legend" hidden><i data-lucide="plus"></i><span>Desglosar otros</span></button>
-          </section>
-        </div>
-        <div id="summary-history-slot"><section class="history-section" aria-labelledby="history-heading"><div class="section-heading"><h2 id="history-heading">Evoluci&#243;n</h2><div class="segmented" role="group" aria-label="Periodo del historial"><button data-period="30" aria-pressed="false">30 d</button><button data-period="90" aria-pressed="false">90 d</button><button data-period="all" aria-pressed="true">Todo</button></div></div><label class="history-metric-label" hidden>Activo<select id="history-metric"><option value="stocks">Acciones y ETF</option><option value="btc">BTC</option><option value="usdt">USDT</option><option value="usdc">USDC</option></select></label><div id="history-summary" class="history-summary"></div><div id="chart-readout" class="chart-readout" hidden><span id="chart-date"></span><strong id="chart-value" class="sensitive"></strong></div><canvas id="history-chart" role="slider" tabindex="0" aria-label="Observaciones" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"></canvas><p id="history-note" class="subtle"></p><details id="history-observations"><summary>Ver fechas e importes</summary><div id="history-rows"></div></details></section></div>
-        <section class="settings-group adjustment-section"><div class="section-heading"><h2>Dinero excluido</h2><button class="icon-button" data-new-adjustment title="Agregar resta al patrimonio" aria-label="Agregar resta al patrimonio"><i data-lucide="plus"></i></button></div><div id="adjustment-list"></div></section>
+      <section id="resumen" class="view" aria-labelledby="summary-heading" data-title="Patrimonio">
+        <section class="balance-panel" aria-label="Total del patrimonio">
+          <h1 id="summary-heading" class="sr-only">Patrimonio</h1>
+          <div class="balance-top"><span class="balance-label" id="balance-label">Total</span><button class="icon-button plain" id="coverage-open" aria-label="Datos y tipo de cambio" title="Datos y tipo de cambio"><i data-lucide="info"></i></button></div>
+          <div class="balance-value sensitive" id="balance" aria-live="polite">••••••</div>
+          <div id="balance-change" class="balance-change"></div>
+          <div id="deduction-breakdown" class="deduction-breakdown" hidden></div>
+          <div id="estimated-net-worth" class="estimated-net-worth" hidden></div>
+        </section>
+        <div id="summary-history-slot"><section class="history-section" aria-labelledby="history-heading"><div class="section-heading"><h2 id="history-heading">Evoluci&#243;n</h2><label class="history-metric-label select-pill" hidden><span class="sr-only">Activo</span><select id="history-metric"><option value="stocks">Acciones y ETF</option><option value="btc">BTC</option><option value="usdt">USDT</option><option value="usdc">USDC</option></select></label></div><div id="history-summary" class="history-summary"></div><div id="chart-readout" class="chart-readout" hidden><span id="chart-date"></span><strong id="chart-value" class="sensitive"></strong></div><canvas id="history-chart" role="slider" tabindex="0" aria-label="Observaciones" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"></canvas><div id="chart-range" class="chart-range" hidden></div><div class="segmented period-chips" role="group" aria-label="Periodo del historial"><button data-period="30" aria-pressed="true">1M</button><button data-period="90" aria-pressed="false">3M</button><button data-period="all" aria-pressed="false">Todo</button></div><p id="history-note" class="subtle"></p><details id="history-observations" class="disclosure"><summary>Ver fechas e importes</summary><div id="history-rows"></div></details></section></div>
+        <div class="summary-controls"><div class="segmented" role="group" aria-label="Moneda"><button data-currency="TOTAL" aria-pressed="true">Todo USD</button><button data-currency="USD" aria-pressed="false">USD</button><button data-currency="CRC" aria-pressed="false">CRC</button></div><button id="composition-open" class="chip-button" hidden><i data-lucide="list-filter"></i><span id="composition-label">Incluir en el total</span></button></div>
+        <section class="distribution" aria-labelledby="distribution-heading">
+          <div class="section-heading"><h2 id="distribution-heading">Distribuci&#243;n</h2><span class="small-label" id="distribution-currency">USD</span></div>
+          <div class="allocation-chart" id="allocation-chart" role="img" aria-label="Distribuci&#243;n del patrimonio"><div class="donut"><div class="donut-center"><i data-lucide="wallet"></i></div></div></div>
+          <div id="allocation-legend" class="allocation-legend"></div>
+          <button id="allocation-toggle" class="allocation-toggle" aria-expanded="false" aria-controls="allocation-legend" hidden><i data-lucide="plus"></i><span>Desglosar otros</span></button>
+        </section>
+        <section class="surface-section adjustment-section"><div class="section-heading"><h2>Dinero excluido</h2><button class="icon-button tinted" data-new-adjustment title="Agregar resta al patrimonio" aria-label="Agregar resta al patrimonio"><i data-lucide="plus"></i></button></div><div id="adjustment-list" class="group-list"></div></section>
         <div id="fx-info" class="fx-info" hidden></div>
       </section>
-      <section id="rendimiento" class="view" aria-labelledby="performance-heading" hidden>
-        <div class="page-heading"><h1 id="performance-heading">Rendimiento</h1><button class="icon-button" data-performance-info title="Sobre las ganancias" aria-label="Sobre las ganancias"><i data-lucide="info"></i></button></div>
-        <p class="muted">Ganancia de las posiciones abiertas</p><div id="performance-total" class="history-summary"></div><p id="performance-note" class="subtle"></p>
-        <section class="performance-section" aria-label="Posiciones"><div class="section-heading"><h2>Posiciones IBKR</h2><select id="performance-sort" aria-label="Ordenar inversiones de mayor a menor"><option value="mark_price">Precio: mayor primero</option><option value="market_value">Valor: mayor primero</option><option value="unrealized_pnl">Ganancia: mayor primero</option></select></div><div class="performance-columns"><span>Activo</span><span id="performance-column">Precio USD</span><span>Ganancia USD</span></div><div id="performance-list"></div></section>
-        <section class="crypto-section" aria-labelledby="crypto-heading"><div class="section-heading"><h2 id="crypto-heading">Criptoactivos</h2><span id="crypto-status" class="small-label">Binance</span></div><div id="crypto-list"></div><p id="crypto-note" class="subtle"></p></section>
-        <section class="history-section" aria-labelledby="btc-heading"><div class="section-heading"><h2 id="btc-heading">Precio BTC/USD</h2><span class="small-label">Coinbase</span></div><div id="btc-price" class="history-summary">&#8212;</div><p id="btc-price-note" class="subtle">Precio pendiente</p></section>
+      <section id="rendimiento" class="view" aria-labelledby="performance-heading" data-title="Rendimiento" hidden>
+        <div class="page-heading"><h1 id="performance-heading">Rendimiento</h1><button class="icon-button plain" data-performance-info title="Sobre las ganancias" aria-label="Sobre las ganancias"><i data-lucide="info"></i></button></div>
+        <div class="hero-metric"><p class="caption">Ganancia de las posiciones abiertas</p><div id="performance-total" class="history-summary"></div><p id="performance-note" class="subtle"></p></div>
+        <section class="surface-section performance-section" aria-label="Posiciones"><div class="section-heading"><h2>Posiciones IBKR</h2><label class="select-pill"><select id="performance-sort" aria-label="Ordenar inversiones de mayor a menor"><option value="mark_price">Precio</option><option value="market_value">Valor</option><option value="unrealized_pnl">Ganancia</option></select></label></div><div class="performance-columns"><span>Activo</span><span id="performance-column">Precio USD</span><span>Ganancia USD</span></div><div id="performance-list" class="group-list"></div></section>
+        <section class="surface-section crypto-section" aria-labelledby="crypto-heading"><div class="section-heading"><h2 id="crypto-heading">Criptoactivos</h2><span id="crypto-status" class="small-label">Binance</span></div><div id="crypto-list" class="group-list"></div><p id="crypto-note" class="subtle"></p></section>
+        <section class="surface-section" aria-labelledby="btc-heading"><div class="section-heading"><h2 id="btc-heading">Precio BTC/USD</h2><span class="small-label">Coinbase</span></div><div class="quote"><div id="btc-price" class="history-summary">&#8212;</div><p id="btc-price-note" class="subtle">Precio pendiente</p></div></section>
         <div id="performance-history-slot"></div>
       </section>
-      <section id="cuentas" class="view" aria-labelledby="accounts-heading" hidden>
+      <section id="cuentas" class="view" aria-labelledby="accounts-heading" data-title="Cuentas" hidden>
         <div class="page-heading"><h1 id="accounts-heading">Cuentas</h1></div>
-        <div class="accounts-tools"><label class="search"><i data-lucide="search"></i><input id="search" type="search" placeholder="Buscar cuenta o entidad" aria-label="Buscar cuenta o entidad" autocomplete="off"></label><label class="sort-control"><i data-lucide="list-filter"></i><select id="sort" aria-label="Ordenar cuentas"><option value="source">Entidad</option><option value="date">Corte reciente</option><option value="balance">Saldo por moneda</option></select></label></div>
+        <div class="accounts-tools"><label class="search"><i data-lucide="search"></i><input id="search" type="search" placeholder="Buscar cuenta o entidad" aria-label="Buscar cuenta o entidad" autocomplete="off" enterkeyhint="search"></label><label class="select-pill sort-control"><select id="sort" aria-label="Ordenar cuentas"><option value="source">Entidad</option><option value="date">Corte reciente</option><option value="balance">Saldo por moneda</option></select></label></div>
         <div class="filter-row" role="group" aria-label="Filtrar cuentas"><button class="filter active" data-filter="all" aria-pressed="true">Todas</button><button class="filter" data-filter="USD" aria-pressed="false">USD</button><button class="filter" data-filter="CRC" aria-pressed="false">CRC</button><button class="filter" data-filter="investments" aria-pressed="false">Inversiones</button></div>
-        <div id="all-accounts" class="account-list"></div>
-        <section id="payroll-section" class="settings-group adjustment-section" hidden><div class="section-heading"><h2>Aportes</h2><span class="small-label" id="payroll-unit">CRC</span></div><div id="payroll-list"></div></section>
+        <div id="all-accounts" class="account-list wallet"></div>
+        <section id="payroll-section" class="surface-section" hidden><div class="section-heading"><h2>Aportes</h2><span class="small-label" id="payroll-unit">CRC</span></div><div id="payroll-list" class="group-list"></div></section>
       </section>
-      <section id="ajustes" class="view" aria-labelledby="settings-heading" hidden>
-        <div class="page-heading"><div><p class="eyebrow">A TU MANERA</p><h1 id="settings-heading">Ajustes</h1></div></div>
+      <section id="plan" class="view" aria-labelledby="plan-heading" data-title="Mi plan" hidden>
+        <div class="page-heading"><h1 id="plan-heading">Mi plan</h1></div>
+        <p id="plan-status" class="subtle" role="status"></p>
+        <div id="plan-content"></div>
+      </section>
+      <section id="ajustes" class="view" aria-labelledby="settings-heading" data-title="Ajustes" hidden>
+        <div class="page-heading"><h1 id="settings-heading">Ajustes</h1></div>
+        <section id="install-group" class="settings-group" hidden><div class="group-list"><button id="install-setting" class="setting-row" type="button"><span class="setting-icon"><i data-lucide="download"></i></span><span class="setting-label">Instalar DEX<span>Pantalla completa y sin conexi&#243;n</span></span><i data-lucide="chevron-right" class="row-chevron"></i></button></div></section>
         <section id="portal-session" class="settings-group access-settings" aria-labelledby="access-heading" hidden>
-          <div class="section-heading"><h2 id="access-heading">Acceso y sincronizaci&#243;n</h2><i data-lucide="shield-check" aria-hidden="true"></i></div>
-          <p id="portal-date" class="subtle"></p>
-          <details id="portal-edit-consent" hidden><summary>Edici&#243;n de salario y restas</summary><p class="subtle">Google solicitar&#225; permiso para editar tus hojas de c&#225;lculo. DEX solo enviar&#225; solicitudes al archivo configurado. No cambia permisos de Gmail, bancos ni inversiones.</p><button id="google-edit" class="text-action" type="button"><i data-lucide="pencil"></i>Autorizar edici&#243;n con Google</button></details>
-          <p id="portal-edit-permission" class="subtle" hidden></p><p id="portal-edit-error" class="form-error" role="alert" hidden></p><div id="portal-edit-status" role="status" hidden></div>
-          <div class="access-actions"><button id="google-disconnect" class="text-action" type="button">Cerrar sesi&#243;n</button><button id="google-forget" class="text-action" type="button">Olvidar conexi&#243;n</button></div>
+          <h2 id="access-heading">Acceso y sincronizaci&#243;n</h2>
+          <div class="group-list">
+            <div class="setting-row static"><span class="setting-icon"><i data-lucide="shield-check"></i></span><span class="setting-label">Sincronizaci&#243;n<span id="portal-date"></span></span></div>
+            <details id="portal-edit-consent" class="setting-disclosure" hidden><summary class="setting-row"><span class="setting-icon"><i data-lucide="pencil"></i></span><span class="setting-label">Edici&#243;n de salario y restas</span></summary><div class="disclosure-body"><p class="subtle">Google solicitar&#225; permiso para editar tus hojas de c&#225;lculo. DEX solo enviar&#225; solicitudes al archivo configurado. No cambia permisos de Gmail, bancos ni inversiones.</p><button id="google-edit" class="text-action" type="button"><i data-lucide="pencil"></i>Autorizar edici&#243;n con Google</button></div></details>
+            <p id="portal-edit-permission" hidden></p><p id="portal-edit-error" class="form-error" role="alert" hidden></p><div id="portal-edit-status" role="status" hidden></div>
+          </div>
+          <div class="group-list access-actions"><button id="google-disconnect" class="setting-row destructive" type="button">Cerrar sesi&#243;n</button><button id="google-forget" class="setting-row destructive" type="button">Olvidar conexi&#243;n</button></div>
         </section>
-        <section class="settings-group"><h2>Preferencias</h2><label class="setting-row"><span class="setting-icon"><i data-lucide="eye-off"></i></span><span class="setting-label">Ocultar importes<span>Privacidad en todas las vistas</span></span><input class="switch" id="privacy-setting" type="checkbox" checked role="switch"></label><label class="setting-row"><span class="setting-icon"><i data-lucide="coins"></i></span><span class="setting-label">Vista de inicio</span><select id="default-currency" aria-label="Vista de inicio"><option value="TOTAL">Todo USD</option><option>USD</option><option>CRC</option></select></label><label class="setting-row"><span class="setting-icon"><i data-lucide="accessibility"></i></span><span class="setting-label">Reducir movimiento</span><input class="switch" id="motion-setting" type="checkbox" role="switch"></label></section>
-        <section class="settings-group"><label class="setting-row"><span class="setting-icon"><i data-lucide="languages"></i></span><span class="setting-label">Idioma</span><select id="language-setting" aria-label="Idioma"><option value="es" lang="es">Espa&#241;ol</option><option value="en" lang="en">English</option></select></label></section>
-        <section class="settings-group"><button id="salary-setting" class="setting-row" hidden><span class="setting-icon"><i data-lucide="calendar-days"></i></span><span class="setting-label">Salario mensual<span id="salary-value"></span></span><i data-lucide="chevron-right"></i></button></section>
-        <section class="settings-group"><div class="section-heading"><h2>Conexiones</h2><span class="small-label">SOLO LECTURA</span></div><p id="automation-state" class="subtle">Actualizaci&#243;n autom&#225;tica pendiente</p><div id="automation-jobs"></div><div id="connections-list"></div></section>
-        <section class="settings-group"><h2>Acerca de DEX</h2><div class="setting-row"><img src="./icon.png" width="42" height="42" alt="" class="about-icon"><span class="setting-label">DEX<span id="about-mode">Vista local</span></span><span class="small-label" data-version>0.1.0</span></div><p class="settings-footnote">Acceso local en esta computadora. Sin sincronizaci&#243;n alojada ni recuperaci&#243;n en otro dispositivo todav&#237;a.</p></section>
+        <section class="settings-group"><h2>Preferencias</h2><div class="group-list">
+          <label class="setting-row"><span class="setting-icon"><i data-lucide="eye"></i></span><span class="setting-label">Apariencia</span><select id="theme-setting" aria-label="Apariencia"><option value="system">Sistema</option><option value="light">Claro</option><option value="dark">Oscuro</option></select></label>
+          <label class="setting-row"><span class="setting-icon"><i data-lucide="eye-off"></i></span><span class="setting-label">Ocultar importes<span>Privacidad en todas las vistas</span></span><input class="switch" id="privacy-setting" type="checkbox" checked role="switch"></label>
+          <label class="setting-row"><span class="setting-icon"><i data-lucide="coins"></i></span><span class="setting-label">Vista de inicio</span><select id="default-currency" aria-label="Vista de inicio"><option value="TOTAL">Todo USD</option><option>USD</option><option>CRC</option></select></label>
+          <label class="setting-row"><span class="setting-icon"><i data-lucide="accessibility"></i></span><span class="setting-label">Reducir movimiento</span><input class="switch" id="motion-setting" type="checkbox" role="switch"></label>
+          <label class="setting-row"><span class="setting-icon"><i data-lucide="languages"></i></span><span class="setting-label">Idioma</span><select id="language-setting" aria-label="Idioma"><option value="es" lang="es">Espa&#241;ol</option><option value="en" lang="en">English</option></select></label>
+        </div></section>
+        <section class="settings-group"><div class="group-list"><button id="salary-setting" class="setting-row" hidden><span class="setting-icon"><i data-lucide="calendar-days"></i></span><span class="setting-label">Salario mensual<span id="salary-value"></span></span><i data-lucide="chevron-right" class="row-chevron"></i></button></div></section>
+        <section class="settings-group"><div class="group-header"><h2>Conexiones</h2><span class="small-label">SOLO LECTURA</span></div><div id="automation-jobs"></div><div id="connections-list" class="group-list"></div><p id="automation-state" class="group-footer">Actualizaci&#243;n autom&#225;tica pendiente</p></section>
+        <section class="settings-group"><h2>Acerca de DEX</h2><div class="group-list"><div class="setting-row static"><img src="./icon.png" width="30" height="30" alt="" class="about-icon"><span class="setting-label">DEX<span id="about-mode">Vista local</span></span><span class="small-label" data-version>0.1.0</span></div></div><p class="settings-footnote">Acceso local en esta computadora. Sin sincronizaci&#243;n alojada ni recuperaci&#243;n en otro dispositivo todav&#237;a.</p></section>
       </section>
     <p class="bottom-note"><a href="./privacy.html">Privacidad / Privacy</a></p>
     </main>
+    <nav class="navigation" aria-label="Navegaci&#243;n principal">
+      <a href="#resumen" data-view="resumen" aria-current="page"><i data-lucide="house"></i><span>Resumen</span></a>
+      <a href="#rendimiento" data-view="rendimiento"><i data-lucide="chart-spline"></i><span>Rendimiento</span></a>
+      <a href="#cuentas" data-view="cuentas"><i data-lucide="wallet-cards"></i><span>Cuentas</span></a>
+      <a href="#ajustes" data-view="ajustes"><i data-lucide="settings"></i><span>Ajustes</span></a>
+    </nav>
   </div>
-  <dialog id="detail" aria-labelledby="detail-title"><div class="sheet-handle"></div><div class="sheet-header"><span class="eyebrow" id="detail-eyebrow">DETALLE</span><button class="icon-button" id="detail-close" aria-label="Cerrar detalle" title="Cerrar"><i data-lucide="x"></i></button></div><div id="detail-content"></div></dialog>
+  <dialog id="detail" class="sheet" aria-labelledby="detail-title"><div class="sheet-grabber" aria-hidden="true"></div><div class="sheet-header"><span class="eyebrow" id="detail-eyebrow">DETALLE</span><button class="icon-button" id="detail-close" aria-label="Cerrar detalle" title="Cerrar"><i data-lucide="x"></i></button></div><div id="detail-content"></div></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
+  <div id="update-prompt" class="float-bar" role="status" hidden><span class="float-icon"><i data-lucide="sparkles"></i></span><span class="float-text">Nueva versi&#243;n disponible</span><button id="update-apply" class="float-action" type="button">Actualizar</button></div>
+  <div id="install-card" class="float-bar" role="dialog" aria-labelledby="install-title" hidden><img src="./icon.png" width="40" height="40" alt=""><span class="float-text"><strong id="install-title">Instala DEX</strong><span>Pantalla completa y sin conexi&#243;n</span></span><button id="install-action" class="float-action" type="button">Instalar</button><button id="install-dismiss" class="icon-button" type="button" aria-label="Cerrar" title="Cerrar"><i data-lucide="x"></i></button></div>
+  <label class="haptic-bridge" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
   <noscript>DEX necesita JavaScript para mostrar tus cuentas.</noscript>
+  <dialog id="app-menu" class="app-menu" aria-labelledby="menu-heading">
+    <div class="menu-header"><strong id="menu-heading">DEX</strong><button id="menu-close" class="icon-button" aria-label="Cerrar men&#250;" title="Cerrar men&#250;"><i data-lucide="x"></i></button></div>
+    <nav aria-label="Secciones">
+      <button data-menu-view="resumen"><i data-lucide="house"></i>Resumen</button>
+      <button data-menu-view="rendimiento"><i data-lucide="chart-spline"></i>Rendimiento</button>
+      <button data-menu-view="cuentas"><i data-lucide="wallet-cards"></i>Cuentas</button>
+      <div class="menu-group">
+        <a href="#metas" data-plan-panel="goals"><i data-lucide="circle-check"></i>Metas</a>
+        <a href="#calendario" data-plan-panel="calendar"><i data-lucide="calendar-days"></i>Calendario</a>
+        <a href="#alertas" data-plan-panel="alerts"><i data-lucide="clock-3"></i>Alertas<span id="plan-alert-count" class="small-label"></span></a>
+      </div>
+      <div class="menu-group">
+        <a href="#comparar" data-plan-panel="history"><i data-lucide="chart-no-axes-combined"></i>Comparar fechas</a>
+        <a href="#hitos" data-plan-panel="milestones"><i data-lucide="pencil"></i>Mis hitos</a>
+        <a href="#mensual" data-plan-panel="reports"><i data-lucide="calendar-days"></i>Resumen mensual</a>
+        <a href="#anual" data-plan-panel="annual"><i data-lucide="chart-pie"></i>Ficha anual</a>
+        <a href="#inflacion" data-plan-panel="inflation"><i data-lucide="coins"></i>Poder de compra</a>
+      </div>
+      <div class="menu-group"><button data-menu-view="ajustes"><i data-lucide="settings"></i>Ajustes</button></div>
+    </nav>
+  </dialog>
 </body>
 </html>
