@@ -119,7 +119,7 @@ const DexNative = (() => {
       source.style.visibility = 'hidden';
       dialog.classList.add('wallet-opening');
       const token = walletToken;
-      const flight = card.animate([{transform: cardTransform(origin, destination), clipPath: stackedClip(source, origin, destination)}, {transform: 'translate3d(0, 0, 0)', clipPath: 'inset(0px round 18px)'}], {duration: 540, easing: 'cubic-bezier(.32, .72, .2, 1)', fill: 'both'});
+      const flight = card.animate([{transform: cardTransform(origin, destination), clipPath: stackedClip(source, origin, destination)}, {transform: 'translate3d(0, 0, 0)', clipPath: 'inset(0px round 18px)'}], {duration: 720, easing: 'cubic-bezier(.32, .72, .2, 1)', fill: 'both'});
       walletAnimations = [flight];
       flight.finished.then(() => { if (token === walletToken) clearWalletMotion(); }, () => {});
       return;

@@ -677,7 +677,7 @@ dialog.sheet.closing::backdrop { animation: fade-out .26s ease-in forwards; }
 #detail .wallet-face .account-amount { grid-area: amount; align-self: center; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
 #detail .wallet-face .account-sub { grid-area: sub; align-self: end; font-size: 12px; font-weight: 700; color: inherit; letter-spacing: .08em; text-transform: uppercase; opacity: .78; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 dialog.sheet.wallet-opening, dialog.sheet.wallet-closing { overflow: visible; background: transparent; isolation: isolate; }
-dialog.sheet.wallet-opening { animation: wallet-shadow-in .54s ease-out both; }
+dialog.sheet.wallet-opening { animation: wallet-shadow-in .72s ease-out both; }
 dialog.sheet.wallet-closing { animation: wallet-shadow-out .36s ease-in both; }
 @keyframes wallet-shadow-in { from { box-shadow: 0 -8px 28px transparent; } to { box-shadow: var(--sheet-shadow); } }
 @keyframes wallet-shadow-out { from { box-shadow: var(--wallet-shadow-start, var(--sheet-shadow)); } to { box-shadow: 0 -8px 28px transparent; } }
@@ -685,7 +685,7 @@ dialog.sheet.wallet-closing { animation: wallet-shadow-out .36s ease-in both; }
 @keyframes wallet-surface-out { from { opacity: var(--wallet-surface-opacity, 1); } to { opacity: 0; } }
 @keyframes wallet-backdrop-out { from { opacity: var(--wallet-backdrop-opacity, 1); } to { opacity: 0; } }
 dialog.sheet.wallet-opening::before, dialog.sheet.wallet-closing::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; clip-path: inset(0 round 30px 30px 0 0); background: var(--elevated); pointer-events: none; }
-dialog.sheet.wallet-opening::before { animation: wallet-surface-in .54s ease-out both; }
+dialog.sheet.wallet-opening::before { animation: wallet-surface-in .72s ease-out both; }
 dialog.sheet.wallet-closing::before { animation: wallet-surface-out .36s ease-in both; }
 dialog.sheet.wallet-closing::backdrop { animation: wallet-backdrop-out .36s ease-in both; }
 .wallet-opening .sheet-grabber, .wallet-closing .sheet-grabber,
