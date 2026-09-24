@@ -645,7 +645,6 @@ dialog.sheet {
   overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none;
   box-shadow: var(--sheet-shadow);
 }
-dialog.sheet:has(.wallet-face) { height: 100dvh; }
 dialog.sheet::-webkit-scrollbar { display: none; }
 dialog.sheet::backdrop { background: rgba(0, 0, 0, .55); animation: fade-in .32s var(--ease-out); }
 dialog.sheet.closing::backdrop { animation: fade-out .26s ease-in forwards; }
