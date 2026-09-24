@@ -188,11 +188,12 @@ main { max-width: 720px; margin: 0 auto; position: relative; }
   position: fixed; z-index: 30; inset: 0 0 auto;
   height: calc(var(--safe-t) + var(--nav-h)); padding: var(--safe-t) calc(var(--gutter-r) - 10px) 0 calc(var(--gutter) - 10px);
   display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center;
+  background: var(--bg);
   view-transition-name: topbar;
 }
 .topbar::before {
   content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0;
-  background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(24px); backdrop-filter: saturate(180%) blur(24px);
+  background: var(--bg);
   box-shadow: 0 .5px 0 var(--sep); transition: opacity .24s var(--ease-out);
 }
 .topbar.scrolled::before { opacity: 1; }
@@ -340,9 +341,7 @@ main.releasing { transition: transform .5s var(--spring); }
 .chip-button svg.lucide { width: 16px; height: 16px; color: var(--label-2); }
 .chip-button:active { transform: scale(.95); background: var(--fill); }
 
-/* History chart (full bleed) */
-.history-section { margin: 18px calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter)); position: relative; }
-.history-section > :not(canvas) { margin-left: var(--gutter); margin-right: var(--gutter-r); }
+.history-section { margin: 18px 0 0; position: relative; min-width: 0; }
 #summary-history-slot .history-section > .section-heading { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
 #performance-history-slot .history-section { margin-top: 40px; }
 .history-summary { font: 700 30px/1.15 var(--font-display); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }

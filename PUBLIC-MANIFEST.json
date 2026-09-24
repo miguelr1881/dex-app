@@ -2,21 +2,21 @@
   "files_sha256": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "LUCIDE-LICENSE": "1e7290b35280a048667bbf0ebabac1c7fd52a75300e8b2946ac165715997f2bc",
-    "README.md": "d7b554b82f8b8b7d1b8507ef7b66d0cd4614864bf436f3d124e77ad701f45ebe",
+    "README.md": "e97a826cf224343cfadb31d7de368597c89c7701181f4f3f84a0a8affcafc6da",
     "app.js": "7217543b9bcd7349500309eb711b54f94c1d1948c301b815c144a31a09b08911",
     "apple-touch-icon.png": "019b1971f80a357bb47f645499ed3dca007e6df48891203bba4dbc397c21914c",
     "brand-bac.svg": "32493e55da7ac457658c384a78286699e898a62669c54dad2b9f674a3376e744",
     "brand-binance.svg": "4c53190ba41229130617d4839b51e548b3e6c5bfd4b776b94def5094dfebf88c",
     "brand-ibkr.png": "5c658db5247eccd8ecda0e8fe17434b9cb4e999a501677e35910504fd0419261",
     "brand-multimoney.svg": "e0151f14ca725dade5c3953ca8fef8259e317947c7e73d184f8a29860b0ef653",
-    "dex.css": "e130fd5f281bb8ffeb9630cbf40ccfbc758c5a8b7fcf43a2f1bd667ea9ed0f2f",
+    "dex.css": "a62751345b5d7a2c789e0d74bf5e4dd33cb36ef7b5429568d7d071d58198cfa7",
     "i18n.js": "f9aae43ba31c43a2da25ee8575bf804f584a0c78f9d41aeb75a4e8f1f12601a7",
     "icon-512.png": "4197e6d1476a50bd6edd051f72e5f19b00a222628d78b63faef543ca2f0b93d9",
     "icon-maskable-192.png": "40658e6bf44f62eeccebc22166e79933bdd1f974e965124a3959efdb09c535f7",
     "icon-maskable-512.png": "b57c8139e290bf2eb359ec7603a88a25221bb6b42b836f295fe6dba63d4372c1",
     "icon.png": "ed556b6aa6225550bbbb3b75323963e84db6ac2ca47171f0d03d2ae89fd0371b",
     "icons.js": "d9a36e5d0d167595237d1c63d6e26fa0250fab0b743d163dc88f68491cf7bfda",
-    "index.html": "e86359f69d46fbf536ea7181840fcbdb2881aed96e2a9f1518c3d0dbfa6f21d7",
+    "index.html": "4ed97384fdf0bf9982b4d1ff183df180be35a01a20aa7c84349ba483f63ffdb4",
     "manifest.webmanifest": "0c5eb00981062e234584ac994ff48d9e315b2a272cafa0aac39361dd13609212",
     "native.js": "8806586b8fb8f62045470b5ec029d4cf1a85744d9ce3dbb3f07fb6c810f06c4b",
     "plan.js": "a6fa0dacc75f59fa976e538894ff810dfab3f5d0581fc818eace1b9451314757",
@@ -72,7 +72,7 @@
     "splash/launch-640x1136.png": "f7227801c0137bb34ce57c54c1f910bab05320cdb14798a05f691e7ad56a37e0",
     "splash/launch-750x1334.png": "79b396f28790e7e0b86f5ef0f4cfea41e38433fe8c9cf96d723a8e424acbee16",
     "splash/launch-828x1792.png": "2a16d11dff970a9e5466f0acf785ad1db27c49a369f58dce1c16ecfb6c6ad7de",
-    "sw.js": "02f20a3d1a66ff4b8d1516359229aafc4033a10b0508edd3a576c96e61601117"
+    "sw.js": "e264e24a08677ca1ae5453f603e7a41d147e8a23c3f8774076baacd22ce8b994"
   },
   "contains_private_data": false,
   "scope": "interface_only"
