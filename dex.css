@@ -185,12 +185,14 @@ body.menu-visible { overflow: hidden; }
 }
 main { max-width: 720px; margin: 0 auto; position: relative; }
 .topbar {
+  --nav-side: 90px;
   position: fixed; z-index: 30; inset: 0 0 auto;
-  height: calc(var(--safe-t) + var(--nav-h)); padding: var(--safe-t) calc(var(--gutter-r) - 10px) 0 calc(var(--gutter) - 10px);
-  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center;
+  height: calc(var(--safe-t) + var(--nav-h)); padding: var(--safe-t) calc(max(var(--gutter), var(--gutter-r)) - 10px) 0;
+  display: grid; grid-template-columns: var(--nav-side) minmax(0, 1fr) var(--nav-side); align-items: center;
   background: var(--bg);
   view-transition-name: topbar;
 }
+.topbar:has(.mode-badge.demo) { --nav-side: 150px; }
 .topbar::before {
   content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0;
   background: var(--bg);
