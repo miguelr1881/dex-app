@@ -6,7 +6,7 @@ const sources = {
   multimoney: {name: 'MultiMoney', logo: 'brand-multimoney.svg', icon: 'sprout', category: 'cash'},
   bac_bank: {name: 'BAC', logo: 'brand-bac.svg', icon: 'landmark', category: 'cash'},
   bac_pension: {name: 'BAC Pensiones', logo: 'brand-bac.svg', icon: 'landmark', category: 'pension'},
-  binance: {name: 'Binance', logo: 'brand-binance.ico', icon: 'bitcoin', category: 'investments'},
+  binance: {name: 'Binance', logo: 'brand-binance.svg', icon: 'bitcoin', category: 'investments'},
   espp: {name: 'ESPP', icon: 'briefcase-business', category: 'espp'},
   asociacion: {name: 'Asociaci\u00f3n solidarista', icon: 'building-2', category: 'association'}
 };
@@ -369,7 +369,7 @@ function entityIcon(source) {
 }
 function accountFace(account, detail = false) {
   const title = escapeHTML(accountTitle(account));
-  return `${entityIcon(account.source)}<span class="account-info">${detail ? `<h2 id="detail-title" class="account-name">${title}</h2>` : `<span class="account-name">${title}</span>`}<span class="account-sub">${escapeHTML(account.source === 'ibkr' ? 'Acciones y efectivo' : entity(account.source).name)}</span></span><span class="account-amount sensitive">${money(account.balance, account.currency)}</span>${icon('chevron-right').replace('<i ', '<i class="account-chevron" ')}`;
+  return `${entityIcon(account.source)}<span class="account-info">${detail ? `<h2 id="detail-title" class="account-name">${title}</h2>` : `<span class="account-name">${title}</span>`}<span class="account-sub">${escapeHTML(account.source === 'ibkr' ? 'Acciones y efectivo' : entity(account.source).name)}</span></span><span class="account-amount sensitive">${money(account.balance, account.currency)}</span>`;
 }
 function accountRow(account) {
   return `<button class="account-row" data-account="${escapeHTML(account.id)}" data-source="${escapeHTML(account.source)}" aria-label="Abrir ${escapeHTML(entity(account.source).name)} ${escapeHTML(accountTitle(account))}">

@@ -1,6 +1,6 @@
 # DEX Web
 
-Build: 0.9.0-plan14. GitHub Pages interface with optional encrypted summary reading.
+Build: 0.9.0-plan15. GitHub Pages interface with optional encrypted summary reading.
 The private daily workflow publishes only data/dex-snapshot.json (AES-256-GCM).
 Never upload a decryption key, credentials, private source or plaintext financial data.
 
@@ -27,3 +27,4 @@ Official assets, retrieved 2026-09-23:
 - MultiMoney: https://nextgen-mmcr.cdn.prismic.io/nextgen-mmcr/1c7e2936-efe4-4074-904d-1dd46c451d08_LogoSmileMM.svg
 - Interactive Brokers: https://www.interactivebrokers.com/images/web/favicons/home-screen-icon-192x192.png
 - Binance: https://bin.bnbstatic.com/static/images/common/favicon.ico
+The Binance symbol is rendered locally as SVG geometry instead of enlarging the favicon.

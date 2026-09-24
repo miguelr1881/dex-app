@@ -486,7 +486,7 @@ button.adjustment-row:active, button.crypto-row:active, button.setting-row:activ
   --card-h: clamp(196px, 57vw, 232px);
   position: relative; isolation: isolate; overflow: hidden; width: 100%; height: var(--card-h); border-radius: 18px; padding: 16px 18px 18px;
   display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; grid-template-rows: 34px 1fr auto; column-gap: 10px;
-  grid-template-areas: "icon name amount" ". . ." "sub sub chev";
+  grid-template-areas: "icon name amount" ". . ." "sub sub sub";
   color: #fff; text-align: left; background: linear-gradient(135deg, #5b5b60, #2c2c30);
   box-shadow: 0 -4px 16px rgba(0, 0, 0, .24), inset 0 .5px 0 rgba(255, 255, 255, .14);
   transition: transform .5s var(--spring), filter .2s;
@@ -507,7 +507,6 @@ button.adjustment-row:active, button.crypto-row:active, button.setting-row:activ
 .wallet .account-sub { grid-area: sub; align-self: end; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; opacity: .78; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .wallet .account-amount { grid-area: amount; align-self: center; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .wallet .account-name { grid-area: name; align-self: center; font-size: 16px; font-weight: 700; letter-spacing: -.01em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.wallet .account-chevron { grid-area: chev; align-self: end; color: currentColor; opacity: .7; width: 16px; height: 16px; }
 [data-source="bac_bank"], .entity-icon.bac_bank { --card: #a6192e; --card-2: #a6192e; }
 [data-source="bac_pension"], .entity-icon.bac_pension { --card: #a6192e; --card-2: #a6192e; }
 [data-source="multimoney"], .entity-icon.multimoney { --card: #10110e; --card-2: #10110e; }
@@ -672,12 +671,11 @@ dialog.sheet.closing::backdrop { animation: fade-out .26s ease-in forwards; }
 .sheet-title > div, .sheet-title > h2 { grid-area: name; align-self: end; display: grid; gap: 2px; }
 .sheet-title #detail-title { font-size: 26px; }
 .sheet-title .subtle { color: inherit; opacity: .78; font-size: 14px; font-weight: 600; }
-.sheet-title.wallet-face { grid-template-areas: "icon name amount" ". . ." "sub sub chev"; transform-origin: 0 0; transform: translate3d(0, 0, 0); will-change: transform; transition: none; clip-path: inset(0 round 18px); }
+.sheet-title.wallet-face { grid-template-areas: "icon name amount" ". . ." "sub sub sub"; transform-origin: 0 0; transform: translate3d(0, 0, 0); will-change: transform; transition: none; clip-path: inset(0 round 18px); }
 #detail .wallet-face .account-info { display: contents; }
 .wallet-face #detail-title.account-name { grid-area: name; align-self: center; font-size: 16px; font-weight: 700; letter-spacing: -.01em; line-height: 1.35; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 #detail .wallet-face .account-amount { grid-area: amount; align-self: center; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
 #detail .wallet-face .account-sub { grid-area: sub; align-self: end; font-size: 12px; font-weight: 700; color: inherit; letter-spacing: .08em; text-transform: uppercase; opacity: .78; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.wallet-face .account-chevron { grid-area: chev; align-self: end; opacity: .7; width: 16px; height: 16px; }
 dialog.sheet.wallet-opening, dialog.sheet.wallet-closing { overflow: visible; background: transparent; isolation: isolate; }
 dialog.sheet.wallet-opening { animation: wallet-shadow-in .54s ease-out both; }
 dialog.sheet.wallet-closing { animation: wallet-shadow-out .36s ease-in both; }
