@@ -343,7 +343,7 @@ function money(value, denomination = currency, split = false) {
   const cents = (absolute + 5n * 10n ** 17n) / 10n ** 18n;
   const whole = new Intl.NumberFormat('en-US').format(cents / 100n);
   const fraction = String(cents % 100n).padStart(2, '0');
-  return `${units < 0n ? '\u2212' : ''}${denomination === 'CRC' ? '\u20a1' : '$'}${whole}${split ? '<span class="money-frac">' : ''}.${fraction}${split ? '</span>' : ''}`;
+  return `${units < 0n && cents > 0n ? '\u2212' : ''}${denomination === 'CRC' ? '\u20a1' : '$'}${whole}${split ? '<span class="money-frac">' : ''}.${fraction}${split ? '</span>' : ''}`;
 }
 function dateLabel(value, full = false) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value || '')) return 'Fecha pendiente';
@@ -481,7 +481,7 @@ function renderDistribution(accounts) {
     if ([...components.values()].every(value => value >= 0n)) {
       allocationModel = allocationModel.filter(item => item !== other).concat([...components].filter(([, value]) => value > 0n)
         .map(([name, value]) => ({name, value, components: [{label: name, value}]})));
-    } else signedComponents = [...components].filter(([, value]) => value !== 0n);
+    } else signedComponents = [...components].filter(([, value]) => (value < 0n ? -value : value) >= 5n * 10n ** 17n);
   }
   const entries = allocationModel.filter(item => item.value > 0n);
   const total = entries.reduce((sum, item) => sum + item.value, 0n);

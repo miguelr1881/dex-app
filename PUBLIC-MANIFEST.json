@@ -2,8 +2,8 @@
   "files_sha256": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "LUCIDE-LICENSE": "1e7290b35280a048667bbf0ebabac1c7fd52a75300e8b2946ac165715997f2bc",
-    "README.md": "a5030d70e6b28a92dcf52f4fe9569653abd07d57dff7eeb8a1247592e81f3206",
-    "app.js": "ba02428dee262b24847f3a56127cf95be4c882ebedd16925b912da270757a73e",
+    "README.md": "4b196bd64021edf4ab1632433ee03980b7ab7e38297414103833e589a00304b5",
+    "app.js": "06ce7e579dfb00340ab609220efb591c3a978208dcf517de7d6aeeb996c3fdba",
     "apple-touch-icon.png": "019b1971f80a357bb47f645499ed3dca007e6df48891203bba4dbc397c21914c",
     "brand-bac.svg": "32493e55da7ac457658c384a78286699e898a62669c54dad2b9f674a3376e744",
     "brand-binance.ico": "8318ebbcb1cb4729eb0f78bb058dc618c3b63f9f9f0070a1a7a3265fdc79b833",
@@ -16,7 +16,7 @@
     "icon-maskable-512.png": "b57c8139e290bf2eb359ec7603a88a25221bb6b42b836f295fe6dba63d4372c1",
     "icon.png": "ed556b6aa6225550bbbb3b75323963e84db6ac2ca47171f0d03d2ae89fd0371b",
     "icons.js": "d9a36e5d0d167595237d1c63d6e26fa0250fab0b743d163dc88f68491cf7bfda",
-    "index.html": "adfba6abad5e5a883997398e19f799c621018e280dcd8068027dad10a1cc3999",
+    "index.html": "b6fbd3ce804848f36b1d8979fd8490169a485dcbd6b5ef8af6b1850607fdedc2",
     "manifest.webmanifest": "0c5eb00981062e234584ac994ff48d9e315b2a272cafa0aac39361dd13609212",
     "native.js": "a76c415ec89f8a2314e4c1d786f7ec99ed5427b4e00715f0b72564d75631be98",
     "plan.js": "a6fa0dacc75f59fa976e538894ff810dfab3f5d0581fc818eace1b9451314757",
@@ -72,7 +72,7 @@
     "splash/launch-640x1136.png": "f7227801c0137bb34ce57c54c1f910bab05320cdb14798a05f691e7ad56a37e0",
     "splash/launch-750x1334.png": "79b396f28790e7e0b86f5ef0f4cfea41e38433fe8c9cf96d723a8e424acbee16",
     "splash/launch-828x1792.png": "2a16d11dff970a9e5466f0acf785ad1db27c49a369f58dce1c16ecfb6c6ad7de",
-    "sw.js": "d169e55250e38f6ec6bc2ca1b20503e12832ac1be3233f18950fd82d02728ac3"
+    "sw.js": "94633d62347152c2922dab6e129863c095cba4982924380f31edc8e165195593"
   },
   "contains_private_data": false,
   "scope": "interface_only"
