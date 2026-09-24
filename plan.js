@@ -5,12 +5,11 @@ const DexPlan = (() => {
   let saving = false;
   let comparisonDates = [];
   let calendarMonth = '';
+  let calendarDay = '';
   let reportPeriod = '';
   let reportMode = 'month';
-  let inflationCountry = 'CRI';
-  let inflationYear = '';
   let lastReport = null;
-  const routes = {plan: ['goals', 'Metas'], metas: ['goals', 'Metas'], calendario: ['calendar', 'Calendario'], comparar: ['history', 'Comparar fechas'], hitos: ['milestones', 'Mis hitos'], mensual: ['reports', 'Resumen mensual'], anual: ['annual', 'Ficha anual'], inflacion: ['inflation', 'Poder de compra'], alertas: ['alerts', 'Alertas']};
+  const routes = {plan: ['goals', 'Metas'], metas: ['goals', 'Metas'], calendario: ['calendar', 'Calendario'], comparar: ['history', 'Comparar fechas'], mensual: ['reports', 'Resumen mensual'], anual: ['annual', 'Ficha anual'], alertas: ['alerts', 'Alertas']};
   function route(target) {
     const destination = routes[target];
     if (!destination) return null;
@@ -87,7 +86,7 @@ const DexPlan = (() => {
   }
 
   function calendar() {
-    const entries = plan().items.filter(item => item.kind !== 'goal' || !item.paused).map(item => ({...item, label: item.kind === 'goal' ? 'Meta' : item.kind === 'milestone' ? 'Hito' : 'Evento'}));
+    const entries = plan().items.filter(item => item.kind === 'event').map(item => ({...item, label: 'Evento'}));
     const next = snapshot.payroll?.configured && snapshot.payroll.espp?.next_purchase_on;
     if (next) entries.push({id: 'scheduled-espp', kind: 'automatic', name: 'Compra ESPP', date: next, note: 'Fecha programada; no confirma la compra ni su conciliaci\u00f3n.', label: 'Programado'});
     return entries.sort((first, last) => first.date.localeCompare(last.date) || first.name.localeCompare(last.name));
@@ -96,13 +95,6 @@ const DexPlan = (() => {
   function alerts() {
     if (!plan().alerts.enabled) return [];
     const messages = [];
-    for (const goal of plan().items.filter(item => item.kind === 'goal' && !item.paused)) {
-      const progress = goalProgress(goal);
-      if (!progress) messages.push({name: goal.name, text: 'Cuenta vinculada no disponible'});
-      else if (progress.remaining === 0n) messages.push({name: goal.name, text: 'Meta alcanzada'});
-      else if (progress.days < 0) messages.push({name: goal.name, text: 'Fecha objetivo vencida'});
-      else if (progress.days <= plan().alerts.days) messages.push({name: goal.name, text: `Fecha objetivo en ${progress.days} d\u00edas`});
-    }
     for (const event of calendar().filter(item => item.kind === 'event' || item.kind === 'automatic')) {
       const days = daysBetween(today(), event.date);
       if (days >= 0 && days <= plan().alerts.days) messages.push({name: event.name, text: `En ${days} d\u00edas`});
@@ -113,23 +105,62 @@ const DexPlan = (() => {
   }
 
   function renderGoals() {
-    const goals = plan().items.filter(item => item.kind === 'goal');
-    return `<div class="section-heading"><h2>Metas</h2>${action('Crear meta', 'plus', 'data-plan-new="goal"')}</div>` + (goals.length ? goals.map(goal => {
-      const progress = goalProgress(goal);
-      return `<article class="goal-row"><div class="section-heading"><h3 data-no-translate>${escapeHTML(goal.name)}</h3>${action('Editar meta', 'pencil', `data-plan-edit="${escapeHTML(goal.id)}"`)}</div>
-        <p class="small-label">${escapeHTML(dateLabel(goal.date, true))} \u00b7 ${goal.paused ? 'Pausada' : progress?.remaining === 0n ? 'Alcanzada' : progress?.days < 0 ? 'Fecha vencida' : `${progress?.days ?? '\u00b7'} d\u00edas`}</p>
-        ${progress ? `<div class="goal-balance">${value(progress.saved, goal.currency)}<span> / ${money(goal.amount, goal.currency)}</span></div><progress max="100" value="${hiddenAmounts ? 0 : Math.min(100, progress.percent)}" aria-label="Progreso de meta"></progress>${line('Falta', value(progress.remaining, goal.currency))}${progress.days > 0 && progress.remaining > 0n ? line('Por mes hasta la fecha', value(progress.remaining * 30n / BigInt(progress.days), goal.currency)) : ''}${caption(progress.account ? `${entryLabel(progress.account)} \u00b7 saldo menos restas vinculadas` : 'Monto apartado manualmente')}` : caption('La cuenta vinculada no est\u00e1 en el corte actual.')}
-        ${goal.note ? `<p class="subtle" data-no-translate>${escapeHTML(goal.note)}</p>` : ''}</article>`;
-    }).join('') : caption('Sin metas.'));
+    const thresholds = [10000, 25000, 50000, 100000, 250000, 500000, 750000, 1000000];
+    const total = selectedTotal();
+    const net = total.net == null ? null : decimal(total.net);
+    const target = decimal('1000000');
+    const visible = net != null && !hiddenAmounts;
+    const percent = visible ? Math.min(100, Number(positive(net) * 1000n / target) / 10) : 0;
+    const next = net == null ? null : thresholds.find(amount => decimal(String(amount)) > net);
+    return `<section class="wealth-goal" aria-label="${I18n.translate('Objetivo patrimonial')}"><p class="small-label">Objetivo patrimonial</p><h2 data-no-translate>USD 1M</h2>
+      ${line('Patrimonio actual', net == null ? '\u2014' : value(net))}
+      <div class="wealth-progress" ${visible ? '' : 'hidden'}><progress max="100" value="${percent}" aria-label="${I18n.translate('Progreso hacia 1M')}"></progress><span data-no-translate>${percent.toLocaleString(I18n.locale)}%</span></div>
+      ${line('Falta para 1M', net == null ? '\u2014' : value(positive(target - net)))}
+      ${caption('Todo USD, con las fuentes seleccionadas y las restas aplicadas.')}</section>
+      <ol class="wealth-milestones" aria-label="${I18n.translate('Hitos de patrimonio')}">${thresholds.map(amount => {
+        const reached = visible && net >= decimal(String(amount));
+        const upcoming = visible && amount === next;
+        return `<li data-wealth-target="${amount}" class="${reached ? 'reached' : upcoming ? 'upcoming' : ''}"><span class="wealth-marker" aria-hidden="true">${reached ? icon('check') : upcoming ? icon('chevron-right') : ''}</span><strong data-no-translate>USD ${amount === 1000000 ? '1M' : amount / 1000 + 'k'}</strong><span class="small-label">${!visible ? '\u2014' : reached ? 'Alcanzada' : upcoming ? 'Pr\u00f3xima meta' : 'Pendiente'}</span></li>`;
+      }).join('')}</ol>`;
   }
 
   function renderCalendar() {
     const entries = calendar();
-    const months = [...new Set([today().slice(0, 7), ...entries.map(item => item.date.slice(0, 7))])].sort();
-    const shown = calendarMonth ? entries.filter(item => item.date.startsWith(calendarMonth)) : entries;
-    return `<div class="section-heading"><h2>Calendario patrimonial</h2>${action('Crear evento', 'plus', 'data-plan-new="event"')}</div>
-      <label class="plan-field">Mes<select id="plan-month"><option value="">Todas las fechas</option>${months.map(month => `<option ${month === calendarMonth ? 'selected' : ''}>${month}</option>`).join('')}</select></label>
-      ${shown.map(item => `<article class="agenda-row"><div><span class="small-label">${escapeHTML(dateLabel(item.date, true))} \u00b7 ${item.label}</span><h3 data-no-translate>${escapeHTML(item.name)}</h3>${item.note ? `<p class="subtle" data-no-translate>${escapeHTML(item.note)}</p>` : ''}</div><div class="plan-actions">${item.kind !== 'automatic' ? action('Editar', 'pencil', `data-plan-edit="${item.id}"`) : ''}${action('Exportar evento privado', 'download', `data-plan-calendar="${item.id}"`)}</div></article>`).join('') || caption('Sin eventos en este periodo.')}`;
+    const currentDay = today();
+    calendarMonth ||= currentDay.slice(0, 7);
+    if (!calendarDay.startsWith(calendarMonth)) calendarDay = currentDay.startsWith(calendarMonth) ? currentDay : calendarMonth + '-01';
+    const first = new Date(calendarMonth + '-01T12:00:00Z');
+    const offset = (first.getUTCDay() + 6) % 7;
+    const weekdays = Array.from({length: 7}, (_, index) => new Intl.DateTimeFormat(I18n.locale, {weekday: 'short', timeZone: 'UTC'}).format(new Date(Date.UTC(2024, 0, 1 + index))));
+    const cells = Array.from({length: 42}, (_, index) => {
+      const date = new Date(first.getTime() + (index - offset) * 86400000).toISOString().slice(0, 10);
+      const count = entries.filter(item => item.date === date).length;
+      return `<button type="button" class="calendar-day ${date.startsWith(calendarMonth) ? '' : 'outside-month'}" data-calendar-day="${date}" tabindex="${date === calendarDay ? 0 : -1}" aria-label="${escapeHTML(dateLabel(date, true))}${count ? `, ${count} ${I18n.translate('Eventos')}` : ''}" aria-pressed="${date === calendarDay}" ${date === currentDay ? 'aria-current="date"' : ''} ${date < '1900-01-01' || date > '2200-12-31' ? 'disabled' : ''}><span>${Number(date.slice(8))}</span><span class="calendar-marker" aria-hidden="true">${count ? '<i></i>' : ''}</span></button>`;
+    }).join('');
+    const shown = entries.filter(item => item.date === calendarDay);
+    return `<div class="section-heading"><h2>Calendario</h2>${action('Crear evento', 'plus', 'data-plan-new="event"')}</div>
+      <div class="calendar-toolbar">${action('Mes anterior', 'chevron-right', 'data-calendar-step="-1"')}
+      <input id="plan-month" type="month" min="1900-01" max="2200-12" value="${calendarMonth}" aria-label="Mes">
+      ${action('Mes siguiente', 'chevron-right', 'data-calendar-step="1"')}${action('Hoy', 'calendar-days', 'data-calendar-today')}</div>
+      <div class="calendar-weekdays" aria-hidden="true">${weekdays.map(day => `<span data-no-translate>${escapeHTML(day)}</span>`).join('')}</div>
+      <div class="calendar-grid" role="group" aria-label="${escapeHTML(new Intl.DateTimeFormat(I18n.locale, {month: 'long', year: 'numeric', timeZone: 'UTC'}).format(first))}">${cells}</div>
+      <section class="calendar-agenda" aria-live="polite"><h3 data-no-translate>${escapeHTML(dateLabel(calendarDay, true))}</h3>
+      ${shown.map(item => `<article class="agenda-row"><div><span class="small-label">${item.label}</span><h3 data-no-translate>${escapeHTML(item.name)}</h3>${item.note ? `<p class="subtle" data-no-translate>${escapeHTML(item.note)}</p>` : ''}</div><div class="plan-actions">${item.kind !== 'automatic' ? action('Editar', 'pencil', `data-plan-edit="${item.id}"`) : ''}${action('Exportar evento privado', 'download', `data-plan-calendar="${item.id}"`)}</div></article>`).join('') || caption('Sin eventos para este d\u00eda.')}</section>`;
+  }
+
+  function selectCalendarDay(date, focus = false) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date < '1900-01-01' || date > '2200-12-31') return;
+    calendarDay = date;
+    calendarMonth = date.slice(0, 7);
+    render();
+    if (focus) select(`[data-calendar-day="${date}"]`)?.focus({preventScroll: true});
+  }
+
+  function shiftCalendarMonth(step, focus = false) {
+    const date = new Date(calendarMonth + '-01T12:00:00Z');
+    date.setUTCMonth(date.getUTCMonth() + step);
+    const last = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+    selectCalendarDay(date.toISOString().slice(0, 7) + '-' + String(Math.min(Number(calendarDay.slice(8)), last)).padStart(2, '0'), focus);
   }
 
   function renderHistory() {
@@ -138,20 +169,7 @@ const DexPlan = (() => {
     if (!points.some(item => item.date === comparisonDates[1])) comparisonDates[1] = points.at(-1)?.date;
     const options = selected => points.map(item => `<option value="${item.date}" ${item.date === selected ? 'selected' : ''}>${escapeHTML(dateLabel(item.date, true))}</option>`).join('');
     const result = compare(points.find(item => item.date === comparisonDates[0]), points.find(item => item.date === comparisonDates[1]));
-    if (panel === 'history') return `<div class="plan-fields"><label>Desde<select id="compare-from">${options(comparisonDates[0])}</select></label><label>Hasta<select id="compare-to">${options(comparisonDates[1])}</select></label></div>${comparisonMarkup(result)}`;
-    return `<div class="section-heading"><h2>Bit\u00e1cora de hitos</h2>${action('Agregar hito', 'plus', 'data-plan-new="milestone"')}</div>
-      ${plan().items.filter(item => item.kind === 'milestone').sort((first, last) => last.date.localeCompare(first.date)).map(item => `<article class="agenda-row"><div><span class="small-label">${escapeHTML(dateLabel(item.date, true))}</span><h3 data-no-translate>${escapeHTML(item.name)}</h3><p class="subtle" data-no-translate>${escapeHTML(item.note)}</p></div>${action('Editar hito', 'pencil', `data-plan-edit="${item.id}"`)}</article>`).join('') || caption('Sin hitos registrados.')}`;
-  }
-
-  function annualInflation(year) {
-    const indices = snapshot.inflation?.countries?.[inflationCountry] || {};
-    const before = indices[String(Number(year) - 1)], after = indices[year];
-    if (!before || !after) return caption(`IPC anual ${year}: pendiente de publicaci\u00f3n o descarga.`);
-    const rate = Number((decimal(after) - decimal(before)) * 10000n / decimal(before)) / 100;
-    const denomination = inflationCountry === 'CRI' ? 'CRC' : 'USD';
-    const nominal = lastReport && year === reportPeriod.slice(0, 4) ? (denomination === 'USD' ? lastReport.end : lastReport.endRate ? lastReport.end * decimal(lastReport.endRate) / unit : null) : null;
-    const reference = nominal != null ? nominal * decimal(before) / decimal(after) : null;
-    return `${line(`IPC ${Number(year) - 1} \u00b7 ${year}`, `${rate.toFixed(2)}%`)}${reference != null ? line('Saldo final a precios del a\u00f1o anterior', value(reference, denomination)) : ''}${caption('Referencia con IPC promedio anual, no inflaci\u00f3n exacta entre los d\u00edas del informe. No mide rentabilidad. Costa Rica se expresa en CRC con el tipo de cambio del corte final.')}`;
+    return `<div class="plan-fields"><label>Desde<select id="compare-from">${options(comparisonDates[0])}</select></label><label>Hasta<select id="compare-to">${options(comparisonDates[1])}</select></label></div>${comparisonMarkup(result)}`;
   }
 
   function renderReports() {
@@ -161,17 +179,10 @@ const DexPlan = (() => {
     const selected = points.filter(item => item.date.startsWith(reportPeriod));
     const baseline = points.filter(item => item.date < (reportPeriod.length === 4 ? reportPeriod + '-01-01' : reportPeriod + '-01')).at(-1) || selected[0];
     lastReport = compare(baseline, selected.at(-1));
-    const year = reportPeriod.slice(0, 4);
-    const indexDate = snapshot.inflation?.country_updated_at?.[inflationCountry] || snapshot.inflation?.updated_at;
-    const indexYears = [...new Set([year, ...Object.keys(snapshot.inflation?.countries?.[inflationCountry] || {})])].filter(Boolean).sort().reverse();
-    if (!indexYears.includes(inflationYear)) inflationYear = year || indexYears[0] || '';
-    return `<section ${panel === 'inflation' ? 'hidden' : ''}><div class="section-heading"><h2>${reportMode === 'year' ? 'Ficha anual' : 'Resumen mensual'}</h2>${action('Exportar informe privado', 'download', `id="plan-export" ${hiddenAmounts || !lastReport ? 'disabled' : ''}`)}</div>
+    return `<section><div class="section-heading"><h2>${reportMode === 'year' ? 'Ficha anual' : 'Resumen mensual'}</h2>${action('Exportar informe privado', 'download', `id="plan-export" ${hiddenAmounts || !lastReport ? 'disabled' : ''}`)}</div>
       <div class="plan-fields"><label>Informe<select id="report-mode"><option value="month" ${reportMode === 'month' ? 'selected' : ''}>Mensual</option><option value="year" ${reportMode === 'year' ? 'selected' : ''}>Anual</option></select></label><label>Periodo<select id="report-period">${periods.map(period => `<option ${period === reportPeriod ? 'selected' : ''}>${period}</option>`).join('')}</select></label></div>
       ${lastReport ? caption(`Cortes disponibles: ${dateLabel(lastReport.first, true)} a ${dateLabel(lastReport.last, true)}. Puede ser un periodo parcial.`) : ''}${comparisonMarkup(lastReport)}
-      <h3>Hitos del periodo</h3>${plan().items.filter(item => item.kind === 'milestone' && item.date.startsWith(reportPeriod)).map(item => `<p data-no-translate>${escapeHTML(dateLabel(item.date))}: ${escapeHTML(item.name)}</p>`).join('') || caption('Sin hitos en este periodo.')}
-      </section><section><h2 ${panel === 'inflation' ? 'class="sr-only"' : ''}>Poder de compra</h2><div class="plan-fields"><label>Referencia de precios<select id="inflation-country"><option value="CRI" ${inflationCountry === 'CRI' ? 'selected' : ''}>Costa Rica</option><option value="USA" ${inflationCountry === 'USA' ? 'selected' : ''}>Estados Unidos</option></select></label><label>A\u00f1o del IPC<select id="inflation-year">${indexYears.map(indexYear => `<option ${indexYear === inflationYear ? 'selected' : ''}>${indexYear}</option>`).join('')}</select></label></div>${annualInflation(inflationYear)}
-      ${caption(snapshot.inflation?.source === 'synthetic' ? 'IPC de ejemplo, no datos oficiales.' : `Fuente: Banco Mundial, FP.CPI.TOTL. ${indexDate ? 'Actualizado: ' + indexDate.slice(0, 10) : 'Datos a\u00fan no disponibles.'} ${['partial', 'stale'].includes(snapshot.inflation?.state) ? 'Algunas referencias no pudieron actualizarse.' : ''}`)}
-      </section><section ${panel === 'inflation' ? 'hidden' : ''}><h3>Metas actuales</h3>${caption(`Estado al consultar el informe (${dateLabel(today(), true)}), no al cierre hist\u00f3rico.`)}${plan().items.filter(item => item.kind === 'goal').map(goal => { const progress = goalProgress(goal); return line(goal.name, progress ? value(progress.remaining, goal.currency) + ' por completar' : 'Cuenta no disponible'); }).join('')}
+      </section><section><h3>Objetivo patrimonial</h3>${line('Meta final', '<span data-no-translate>USD 1M</span>')}
       <h3>Pr\u00f3ximas fechas</h3>${calendar().filter(item => item.date >= today()).slice(0, 5).map(item => line(item.name, escapeHTML(dateLabel(item.date, true)))).join('') || caption('Sin fechas pendientes.')}</section>`;
   }
 
@@ -181,7 +192,7 @@ const DexPlan = (() => {
     select('#plan-alert-count').textContent = notices.length ? String(notices.length) : '';
     select('#plan-status').textContent = Portal.enabled && snapshot.remote_editing?.requests?.some(item => item.kind === 'planning' && item.state === 'pending') ? 'Cambio de plan pendiente de aplicar en la ejecuci\u00f3n diaria.' : snapshot.demo ? 'Plan de demostraci\u00f3n' : '';
     const container = select('#plan-content');
-    container.innerHTML = panel === 'goals' ? renderGoals() : panel === 'calendar' ? renderCalendar() : ['history', 'milestones'].includes(panel) ? renderHistory() : ['reports', 'annual', 'inflation'].includes(panel) ? renderReports() : `<div class="section-heading"><h2>Alertas</h2>${action('Configurar alertas', 'settings', 'data-plan-new="alerts"')}</div>${caption('Avisos dentro de DEX. No se env\u00edan notificaciones con la app cerrada.')}${notices.map(item => `<div class="agenda-row"><div><h3 data-no-translate>${escapeHTML(item.name)}</h3><p class="subtle">${escapeHTML(item.text)}</p></div></div>`).join('') || caption(plan().alerts.enabled ? 'Sin avisos pendientes.' : 'Alertas desactivadas.')}`;
+    container.innerHTML = panel === 'goals' ? renderGoals() : panel === 'calendar' ? renderCalendar() : panel === 'history' ? renderHistory() : ['reports', 'annual'].includes(panel) ? renderReports() : `<div class="section-heading"><h2>Alertas</h2>${action('Configurar alertas', 'settings', 'data-plan-new="alerts"')}</div>${caption('Avisos dentro de DEX. No se env\u00edan notificaciones con la app cerrada.')}${notices.map(item => `<div class="agenda-row"><div><h3 data-no-translate>${escapeHTML(item.name)}</h3><p class="subtle">${escapeHTML(item.text)}</p></div></div>`).join('') || caption(plan().alerts.enabled ? 'Sin avisos pendientes.' : 'Alertas desactivadas.')}`;
     icons();
   }
 
@@ -196,7 +207,7 @@ const DexPlan = (() => {
       const goal = kind === 'goal';
       select('#detail-content').innerHTML = `<h2 id="detail-title">${item ? 'Editar' : 'Crear'} ${goal ? 'meta' : kind === 'milestone' ? 'hito' : 'evento'}</h2><form id="plan-form" class="adjustment-form">
         <label>Nombre<input id="plan-name" required maxlength="80" autocomplete="off" value="${escapeHTML(item?.name || '')}"></label>
-        <label>${goal ? 'Fecha objetivo' : 'Fecha'}<input id="plan-date" type="date" required min="1900-01-01" max="2200-12-31" value="${item?.date || today()}"></label>
+        <label>${goal ? 'Fecha objetivo' : 'Fecha'}<input id="plan-date" type="date" required min="1900-01-01" max="2200-12-31" value="${item?.date || (panel === 'calendar' ? calendarDay : today())}"></label>
         ${goal ? `<div class="form-columns"><label>Monto objetivo<input id="plan-amount" required inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" value="${escapeHTML(item?.amount || '')}"></label><label>Moneda<select id="plan-currency"><option ${item?.currency !== 'CRC' ? 'selected' : ''}>USD</option><option ${item?.currency === 'CRC' ? 'selected' : ''}>CRC</option></select></label></div>
           <label>Progreso desde<select id="plan-account"><option value="">Monto apartado manualmente</option>${snapshot.accounts.map(account => `<option value="${escapeHTML(account.id)}" ${account.id === item?.account_id ? 'selected' : ''}>${escapeHTML(entryLabel(account))} \u00b7 ${account.currency}</option>`).join('')}</select></label>
           <label id="plan-saved-row">Monto apartado<input id="plan-saved" required inputmode="decimal" pattern="[0-9]+([.,][0-9]{1,2})?" value="${escapeHTML(item?.saved || '0')}"></label>
@@ -237,6 +248,7 @@ const DexPlan = (() => {
       if (!response.ok) throw new Error(response.status === 409 ? 'El plan cambi\u00f3. Cierra y actualiza antes de editar.' : response.status === 400 ? 'Revisa monto, fecha y cuenta. No puedes asignar la misma cuenta a dos metas activas.' : 'Guardado sin confirmar. Actualiza antes de reintentar.');
       const updated = await response.json();
       validateSnapshot(updated);
+      if (panel === 'calendar' && change.operation === 'save') { calendarDay = change.date; calendarMonth = change.date.slice(0, 7); }
       snapshot = updated;
       currentDetail = null;
       closeSheet();
@@ -278,6 +290,17 @@ const DexPlan = (() => {
   }
 
   document.addEventListener('click', event => {
+    const calendarTarget = event.target.closest('[data-calendar-day], [data-calendar-step], [data-calendar-today]');
+    if (calendarTarget && snapshot) {
+      if (calendarTarget.dataset.calendarDay) selectCalendarDay(calendarTarget.dataset.calendarDay, true);
+      else if (calendarTarget.hasAttribute('data-calendar-today')) selectCalendarDay(today(), true);
+      else {
+        const step = Number(calendarTarget.dataset.calendarStep);
+        shiftCalendarMonth(step);
+        select(`[data-calendar-step="${step}"]`)?.focus({preventScroll: true});
+      }
+      return;
+    }
     const target = event.target.closest('[data-plan-new], [data-plan-edit], [data-plan-calendar], #plan-export');
     if (!target || !snapshot) return;
     if (target.dataset.planNew || target.dataset.planEdit) {
@@ -292,15 +315,28 @@ const DexPlan = (() => {
     }
   });
   document.addEventListener('change', event => {
-    if (event.target.id === 'plan-month') calendarMonth = event.target.value;
+    if (event.target.id === 'plan-month') {
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(event.target.value) || !event.target.validity.valid) return;
+      selectCalendarDay(event.target.value + '-01'); return;
+    }
     else if (event.target.id === 'compare-from') comparisonDates[0] = event.target.value;
     else if (event.target.id === 'compare-to') comparisonDates[1] = event.target.value;
     else if (event.target.id === 'report-mode') { location.hash = event.target.value === 'year' ? 'anual' : 'mensual'; return; }
-    else if (event.target.id === 'report-period') { reportPeriod = event.target.value; inflationYear = reportPeriod.slice(0, 4); }
-    else if (event.target.id === 'inflation-country') inflationCountry = event.target.value;
-    else if (event.target.id === 'inflation-year') inflationYear = event.target.value;
+    else if (event.target.id === 'report-period') reportPeriod = event.target.value;
     else return;
     render();
+  });
+  document.addEventListener('keydown', event => {
+    const date = event.target.dataset.calendarDay;
+    if (!date) return;
+    if (event.key === 'PageUp' || event.key === 'PageDown') {
+      event.preventDefault(); shiftCalendarMonth(event.key === 'PageUp' ? -1 : 1, true); return;
+    }
+    const weekday = (new Date(date + 'T12:00:00Z').getUTCDay() + 6) % 7;
+    const offset = {ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7, Home: -weekday, End: 6 - weekday}[event.key];
+    if (offset == null) return;
+    event.preventDefault();
+    selectCalendarDay(new Date(Date.parse(date + 'T12:00:00Z') + offset * 86400000).toISOString().slice(0, 10), true);
   });
   return {render, route, form, compare, goalProgress, calendarText, get saving() { return saving; }};
 })();

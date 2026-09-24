@@ -17,6 +17,8 @@ const I18n = (() => {
     ['La cuenta vinculada no est\u00e1 en el corte actual.', 'The linked account is missing from the current snapshot.'],
     ['No mueve dinero ni modifica el patrimonio. Una cuenta solo puede vincularse a una meta activa.', 'Does not move money or change net worth. An account can only fund one active goal.'],
     ['Calendario patrimonial', 'Wealth calendar'], ['Todas las fechas', 'All dates'], ['Mes', 'Month'],
+    ['Objetivo patrimonial', 'Wealth target'], ['Patrimonio actual', 'Current net worth'], ['Falta para 1M', 'Remaining to 1M'], ['Progreso hacia 1M', 'Progress toward 1M'], ['Hitos de patrimonio', 'Net worth milestones'], ['Pr\u00f3xima meta', 'Next milestone'], ['Meta final', 'Final target'], ['Todo USD, con las fuentes seleccionadas y las restas aplicadas.', 'All USD, with selected sources and deductions applied.'],
+    ['Mes anterior', 'Previous month'], ['Mes siguiente', 'Next month'], ['Hoy', 'Today'], ['Eventos', 'Events'], ['Sin eventos para este d\u00eda.', 'No events for this day.'],
     ['Evento', 'Event'], ['Hito', 'Milestone'], ['Programado', 'Scheduled'], ['Meta', 'Goal'],
     ['Exportar evento privado', 'Export private event'], ['Sin eventos en este periodo.', 'No events in this period.'],
     ['Comparar fechas', 'Compare dates'], ['Desde', 'From'], ['Hasta', 'To'], ['Inicio', 'Opening'], ['Final', 'Closing'],

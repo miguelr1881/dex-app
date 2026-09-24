@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; img-src 'self' https://*.googleusercontent.com; connect-src 'self' https://sheets.googleapis.com https://accounts.google.com/gsi/ https://api.coinbase.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <meta name="dex-build" content="0.9.0-plan4">
+  <meta name="dex-build" content="0.9.0-plan12">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -192,9 +192,6 @@
   <dialog id="app-menu" class="app-menu" aria-labelledby="menu-heading">
     <div class="menu-header"><strong id="menu-heading">DEX</strong><button id="menu-close" class="icon-button" aria-label="Cerrar men&#250;" title="Cerrar men&#250;"><i data-lucide="x"></i></button></div>
     <nav aria-label="Secciones">
-      <button data-menu-view="resumen"><i data-lucide="house"></i>Resumen</button>
-      <button data-menu-view="rendimiento"><i data-lucide="chart-spline"></i>Rendimiento</button>
-      <button data-menu-view="cuentas"><i data-lucide="wallet-cards"></i>Cuentas</button>
       <div class="menu-group">
         <a href="#metas" data-plan-panel="goals"><i data-lucide="circle-check"></i>Metas</a>
         <a href="#calendario" data-plan-panel="calendar"><i data-lucide="calendar-days"></i>Calendario</a>
@@ -202,12 +199,9 @@
       </div>
       <div class="menu-group">
         <a href="#comparar" data-plan-panel="history"><i data-lucide="chart-no-axes-combined"></i>Comparar fechas</a>
-        <a href="#hitos" data-plan-panel="milestones"><i data-lucide="pencil"></i>Mis hitos</a>
         <a href="#mensual" data-plan-panel="reports"><i data-lucide="calendar-days"></i>Resumen mensual</a>
         <a href="#anual" data-plan-panel="annual"><i data-lucide="chart-pie"></i>Ficha anual</a>
-        <a href="#inflacion" data-plan-panel="inflation"><i data-lucide="coins"></i>Poder de compra</a>
       </div>
-      <div class="menu-group"><button data-menu-view="ajustes"><i data-lucide="settings"></i>Ajustes</button></div>
     </nav>
   </dialog>
 </body>

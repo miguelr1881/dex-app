@@ -11,10 +11,10 @@
   --label: #fff;
   --label-2: rgba(235, 235, 245, .62);
   --label-3: rgba(235, 235, 245, .32);
-  --up: #34e07f;
-  --down: #ff5b4f;
-  --tint: #4a8dff;
-  --orange: #ff9f0a;
+  --up: #ccff00;
+  --down: #ff4b43;
+  --tint: #ccff00;
+  --orange: #ffc900;
   --trend: var(--up);
   --glass: rgba(0, 0, 0, .72);
   --nav-glass: rgba(22, 22, 24, .74);
@@ -49,9 +49,9 @@
   --label: #171b20;
   --label-2: #56616f;
   --label-3: #697584;
-  --up: #087a43;
-  --down: #c83229;
-  --tint: #145dca;
+  --up: #007a2b;
+  --down: #c72c26;
+  --tint: #236b00;
   --glass: rgba(247, 248, 250, .94);
   --nav-glass: rgba(255, 255, 255, .92);
   --float-glass: rgba(255, 255, 255, .97);
@@ -62,7 +62,7 @@
 }
 :root[data-theme="light"] .notice.error,
 :root[data-theme="light"] .notice[data-state="error"] { color: var(--down); }
-:root[data-theme="light"] .wallet .account-row { box-shadow: 0 -6px 20px rgba(31, 41, 50, .18), inset 0 .5px 0 rgba(255, 255, 255, .3); }
+:root[data-theme="light"] .wallet .account-row { box-shadow: 0 -3px 12px rgba(31, 41, 50, .12), inset 0 .5px 0 rgba(255, 255, 255, .14); }
 :root[data-theme="light"] .switch:not(:checked) { background: #c5cbd3; }
 :root[data-theme="light"] .navigation { box-shadow: 0 -1px 0 var(--sep), 0 6px 24px rgba(31, 41, 50, .12); }
 @supports not (transition-timing-function: linear(0, 1)) {
@@ -90,6 +90,9 @@ img { display: block; }
 [hidden] { display: none !important; }
 :focus { outline: none; }
 :focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; border-radius: 10px; }
+#main:focus-visible { outline: none; }
+#main { overflow-x: clip; }
+:root[data-input="pointer"] :focus-visible:not(input):not(select):not(textarea) { outline: none; }
 .sr-only, .skip-link:not(:focus) {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0;
 }
@@ -117,8 +120,39 @@ body.menu-visible { overflow: hidden; }
 .app-menu [aria-current="page"] { background: var(--fill); font-weight: 600; }
 .app-menu nav svg { width: 20px; height: 20px; color: var(--label-2); }
 .menu-group { border-top: 1px solid var(--sep); padding-top: 8px; margin-top: 8px; }
+.menu-group:first-child { border-top: 0; margin-top: 0; }
+.calendar-toolbar { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px 44px; align-items: center; gap: 4px; margin: 20px 0 16px; }
+.calendar-toolbar input { width: 100%; min-width: 0; height: 44px; padding: 4px; border: 0; background: transparent; color: var(--label); font: 600 16px var(--font); }
+[data-calendar-step="-1"] svg { transform: rotate(180deg); }
+.calendar-weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.calendar-weekdays { color: var(--label-2); text-align: center; font-size: 12px; padding: 8px 0; }
+.calendar-day { min-width: 0; height: 56px; padding: 8px 0 4px; display: grid; place-items: center; grid-template-rows: 24px 12px; border-radius: 8px; font-size: 16px; font-variant-numeric: tabular-nums; color: var(--label); background: transparent; }
+.calendar-day.outside-month { color: var(--label-3); }
+.calendar-day[aria-current="date"] > span:first-child { text-decoration: underline; text-underline-offset: 5px; }
+.calendar-day[aria-pressed="true"] { color: var(--on-accent); background: var(--tint); }
+.calendar-marker { display: grid; place-items: center; height: 12px; }
+.calendar-marker i { display: block; width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.calendar-agenda { border-top: 1px solid var(--sep); margin-top: 20px; padding-top: 8px; }
+@media (max-width: 380px) {
+  .calendar-toolbar { grid-template-columns: 44px minmax(0, 1fr) 44px; }
+  .calendar-toolbar input { grid-column: 1 / -1; grid-row: 1; }
+  [data-calendar-step="-1"] { grid-column: 1; grid-row: 2; }
+  [data-calendar-step="1"] { grid-column: 3; grid-row: 2; }
+  [data-calendar-today] { grid-column: 2; grid-row: 2; justify-self: center; }
+}
 #plan-alert-count { margin-left: auto; }
 #plan-content { min-width: 0; padding-top: 20px; }
+.wealth-goal { padding-bottom: 18px; border-bottom: 1px solid var(--sep); }
+#plan-content .wealth-goal h2 { font-size: 36px; line-height: 1.15; margin: 8px 0 22px; }
+.wealth-progress { display: flex; align-items: center; gap: 14px; margin: 20px 0; font-size: 14px; font-variant-numeric: tabular-nums; }
+.wealth-progress progress { flex: 1; min-width: 0; height: 6px; accent-color: var(--tint); }
+.wealth-milestones { margin: 0; padding: 8px 0 0; list-style: none; }
+.wealth-milestones li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 14px; min-height: 66px; border-bottom: 1px solid var(--sep); }
+.wealth-milestones strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.wealth-marker { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--sep); border-radius: 50%; }
+.wealth-marker svg { width: 16px; height: 16px; }
+.wealth-milestones .reached .wealth-marker { background: var(--tint); border-color: var(--tint); color: var(--on-accent); }
+.wealth-milestones .upcoming .wealth-marker { color: var(--tint); border-color: var(--tint); }
 #plan-content h2 { font-size: 21px; margin: 24px 0 12px; letter-spacing: 0; }
 #plan-content h3 { font-size: 17px; margin: 12px 0 8px; letter-spacing: 0; }
 #plan-content .section-heading h2, #plan-content .section-heading h3 { margin: 0; }
@@ -427,9 +461,9 @@ button.adjustment-row:active, button.crypto-row:active, button.setting-row:activ
 .crypto-identity strong { font-size: 17px; font-weight: 600; }
 .crypto-value { text-align: right; font-size: 16px; font-weight: 600; }
 .coin-mark { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 700 20px/1 var(--font-display); color: #fff; }
-.coin-mark.btc { background: linear-gradient(145deg, #ffae3b, #f2870a); }
-.coin-mark.usdt { background: linear-gradient(145deg, #3cc39a, #1a8f6c); }
-.coin-mark.usdc { background: linear-gradient(145deg, #4f8ee3, #2265c3); }
+.coin-mark.btc { background: #986c12; }
+.coin-mark.usdt { background: #08734f; }
+.coin-mark.usdc { background: #245fa8; }
 #crypto-note, .crypto-section > .subtle { margin: 10px 4px 0; }
 .quote { padding: 18px; display: grid; gap: 6px; }
 .quote .history-summary { font-size: 32px; }
@@ -454,19 +488,19 @@ button.adjustment-row:active, button.crypto-row:active, button.setting-row:activ
   display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; grid-template-rows: 34px 1fr auto; column-gap: 10px;
   grid-template-areas: "icon name amount" ". . ." "sub sub chev";
   color: #fff; text-align: left; background: linear-gradient(135deg, #5b5b60, #2c2c30);
-  box-shadow: 0 -10px 30px rgba(0, 0, 0, .55), inset 0 .5px 0 rgba(255, 255, 255, .22);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, .24), inset 0 .5px 0 rgba(255, 255, 255, .14);
   transition: transform .5s var(--spring), filter .2s;
 }
 .wallet .account-row + .account-row { margin-top: calc(66px - var(--card-h)); }
-.wallet .account-row:active { transform: translateY(-4px) scale(.985); }
-@media (hover: hover) and (pointer: fine) { .wallet .account-row:hover { transform: translateY(-12px); } }
+.wallet .account-row:active { filter: brightness(.96); }
+@media (hover: hover) and (pointer: fine) { .wallet .account-row:hover { filter: brightness(1.06); } }
 .wallet .account-row::before, .sheet-title::before {
-  content: ""; position: absolute; inset: 0; z-index: -1;
-  background: radial-gradient(120% 90% at 0% 0%, rgba(255, 255, 255, .22), transparent 55%);
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit;
+  background: none;
 }
 .wallet .account-row::after, .sheet-title::after {
-  content: ""; position: absolute; z-index: -1; width: 88%; aspect-ratio: 1; right: -38%; bottom: -62%; border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, .14); box-shadow: 0 0 0 26px rgba(255, 255, 255, .035), 0 0 0 58px rgba(255, 255, 255, .025);
+  content: ""; position: absolute; z-index: -1; inset: 0; border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, .09); pointer-events: none;
 }
 .wallet .entity-icon, .sheet-title .entity-icon { grid-area: icon; background: rgba(255, 255, 255, .2); color: inherit; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
 .wallet .account-info { display: contents; }
@@ -474,16 +508,24 @@ button.adjustment-row:active, button.crypto-row:active, button.setting-row:activ
 .wallet .account-amount { grid-area: amount; align-self: center; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
 .wallet .account-name { grid-area: name; align-self: center; font-size: 16px; font-weight: 700; letter-spacing: -.01em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .wallet .account-chevron { grid-area: chev; align-self: end; color: currentColor; opacity: .7; width: 16px; height: 16px; }
-[data-source="bac_bank"] { --card: #e8203f; --card-2: #9a0620; }
-[data-source="bac_pension"] { --card: #8a4dff; --card-2: #4a1fb8; }
-[data-source="multimoney"] { --card: #22c77f; --card-2: #0a7548; }
-[data-source="ibkr"] { --card: #3a3c42; --card-2: #121315; }
-[data-source="binance"] { --card: #f6c343; --card-2: #d9950b; }
-[data-source="espp"] { --card: #2f7dff; --card-2: #0b3fa0; }
-[data-source="asociacion"] { --card: #1fbfcf; --card-2: #0a6d82; }
-.wallet .account-row[data-source], .sheet-title[data-source] { background: linear-gradient(140deg, var(--card), var(--card-2)); }
-.wallet .account-row[data-source="ibkr"]::after, .sheet-title[data-source="ibkr"]::after { border-color: rgba(255, 70, 80, .45); }
-.wallet .account-row[data-source="binance"], .sheet-title[data-source="binance"] { color: #17140a; }
+[data-source="bac_bank"], .entity-icon.bac_bank { --card: #a6192e; --card-2: #a6192e; }
+[data-source="bac_pension"], .entity-icon.bac_pension { --card: #a6192e; --card-2: #a6192e; }
+[data-source="multimoney"], .entity-icon.multimoney { --card: #10110e; --card-2: #10110e; }
+[data-source="ibkr"], .entity-icon.ibkr { --card: #111411; --card-2: #111411; }
+[data-source="binance"], .entity-icon.binance { --card: #181a20; --card-2: #181a20; }
+[data-source="espp"], .entity-icon.espp { --card: #14331c; --card-2: #14331c; }
+[data-source="asociacion"], .entity-icon.asociacion { --card: #18332c; --card-2: #18332c; }
+.wallet .account-row[data-source], .sheet-title[data-source] { background: var(--card); }
+.entity-icon.multimoney, .entity-icon.binance { color: #111411; }
+.entity-icon.binance { background: #f0b90b; color: #181a20; }
+.wallet .account-row[data-source="binance"]::after, .sheet-title[data-source="binance"]::after { border-color: #f0b90b; border-left-width: 5px; }
+.wallet [data-source="binance"] .account-amount, .sheet-title[data-source="binance"] .account-amount { color: #f0b90b; }
+.entity-icon.bac_bank, .entity-icon.bac_pension { background: #fff; color: #a6192e; }
+.entity-icon.ibkr { background: #d91222; color: #fff; }
+.entity-icon.multimoney { background: #abd100; color: #10110e; }
+.wallet .account-row[data-source="ibkr"]::after, .sheet-title[data-source="ibkr"]::after { border-color: #d91222; border-left-width: 5px; }
+.wallet .account-row[data-source="multimoney"]::after, .sheet-title[data-source="multimoney"]::after { border-color: #abd100; border-left-width: 5px; }
+.wallet [data-source="multimoney"] .account-amount, .sheet-title[data-source="multimoney"] .account-amount { color: #abd100; }
 .empty { display: grid; justify-items: center; gap: 10px; padding: 48px 16px; color: var(--label-2); font-size: 15px; text-align: center; }
 .empty svg.lucide { width: 30px; height: 30px; color: var(--label-3); }
 #payroll-section { margin-top: 28px; }
@@ -493,13 +535,11 @@ button.adjustment-row:active, button.crypto-row:active, button.setting-row:activ
   font-size: 11px; font-weight: 800; letter-spacing: .02em; color: #fff; background: linear-gradient(140deg, var(--card, #636366), var(--card-2, #3a3a3c));
 }
 .entity-icon svg.lucide { width: 18px; height: 18px; }
-.entity-icon.bac_bank { --card: #e8203f; --card-2: #9a0620; }
-.entity-icon.bac_pension { --card: #8a4dff; --card-2: #4a1fb8; }
-.entity-icon.multimoney { --card: #22c77f; --card-2: #0a7548; }
-.entity-icon.ibkr { --card: #3a3c42; --card-2: #121315; }
-.entity-icon.binance { --card: #f6c343; --card-2: #d9950b; color: #17140a; }
-.entity-icon.espp { --card: #2f7dff; --card-2: #0b3fa0; }
-.entity-icon.asociacion { --card: #1fbfcf; --card-2: #0a6d82; }
+.entity-icon.binance { color: #17140a; }
+.entity-icon.official-logo { background: transparent; border-radius: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.entity-icon.official-logo img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.entity-icon.official-logo.multimoney { background: #10110e; border-radius: 6px; padding: 3px; }
+.entity-icon.official-logo.bac_bank, .entity-icon.official-logo.bac_pension { background: #fff; border-radius: 6px; padding: 2px; }
 
 /* Settings */
 .settings-group { margin-top: 30px; }
@@ -514,14 +554,14 @@ button.setting-row:has(> svg:last-child), #connections-list .setting-row { grid-
 .setting-row:has(> select) { padding-right: 12px; }
 .setting-icon { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; background: #636366; }
 .setting-icon svg.lucide { width: 18px; height: 18px; stroke-width: 2.2; }
-.setting-icon:has(.lucide-eye-off), .setting-icon:has(.lucide-eye) { background: #5e5ce6; }
-.setting-icon:has(.lucide-coins) { background: #ff9f0a; }
-.setting-icon:has(.lucide-accessibility) { background: #0a84ff; }
-.setting-icon:has(.lucide-languages) { background: #8e8e93; }
-.setting-icon:has(.lucide-calendar-days) { background: #ff375f; }
-.setting-icon:has(.lucide-download) { background: #30d158; }
-.setting-icon:has(.lucide-shield-check) { background: #30d158; }
-.setting-icon:has(.lucide-pencil) { background: #0a84ff; }
+.setting-icon:has(.lucide-eye-off), .setting-icon:has(.lucide-eye) { background: #7044a3; }
+.setting-icon:has(.lucide-coins) { background: #986c12; }
+.setting-icon:has(.lucide-accessibility) { background: #245fa8; }
+.setting-icon:has(.lucide-languages) { background: #656c75; }
+.setting-icon:has(.lucide-calendar-days) { background: #b52c48; }
+.setting-icon:has(.lucide-download) { background: #08734f; }
+.setting-icon:has(.lucide-shield-check) { background: #08734f; }
+.setting-icon:has(.lucide-pencil) { background: #245fa8; }
 .setting-label { display: grid; gap: 1px; font-size: 17px; min-width: 0; overflow-wrap: anywhere; }
 .setting-row select { color: var(--label-2); font-weight: 400; padding-right: 22px; text-align: right; text-align-last: right; min-height: 44px; }
 .setting-row:has(> select)::after { right: 18px; color: var(--label-3); }
@@ -549,7 +589,7 @@ button.setting-row:has(> svg:last-child), #connections-list .setting-row { grid-
 /* Switch */
 .switch { -webkit-appearance: none; appearance: none; position: relative; width: 51px; height: 31px; margin: 0; border-radius: 999px; background: #39393d; cursor: pointer; flex: none; transition: background-color .25s var(--ease-out); }
 .switch::before { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0, 0, 0, .15), 0 3px 1px rgba(0, 0, 0, .06); transition: transform .38s var(--spring-bounce); }
-.switch:checked { background: #30d158; }
+.switch:checked { background: #007a2b; }
 .switch:checked::before { transform: translateX(20px); }
 .switch:active::before { transform: scaleX(1.12); transform-origin: left; }
 .switch:checked:active::before { transform: translateX(16px) scaleX(1.12); }
@@ -597,28 +637,27 @@ button.setting-row:has(> svg:last-child), #connections-list .setting-row { grid-
 
 /* Sheet */
 dialog.sheet {
+  isolation: isolate;
+  --sheet-shadow: 0 -8px 28px rgba(0, 0, 0, .24);
   position: fixed; inset: auto 0 var(--kb) 0; margin: 0 auto; width: 100%; max-width: 640px;
   max-height: calc(100dvh - var(--safe-t) - 16px - var(--kb)); padding: 0 var(--gutter-r) calc(28px + var(--safe-b)) var(--gutter);
   border: 0; border-radius: 30px 30px 0 0; background: var(--elevated); color: var(--label);
   overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; scrollbar-width: none;
-  box-shadow: 0 -12px 50px rgba(0, 0, 0, .5);
+  box-shadow: var(--sheet-shadow);
 }
+dialog.sheet:has(.wallet-face) { height: 100dvh; }
 dialog.sheet::-webkit-scrollbar { display: none; }
 dialog.sheet::backdrop { background: rgba(0, 0, 0, .55); animation: fade-in .32s var(--ease-out); }
 dialog.sheet.closing::backdrop { animation: fade-out .26s ease-in forwards; }
 @keyframes fade-in { from { opacity: 0; } }
 @keyframes fade-out { to { opacity: 0; } }
-.sheet-grabber { position: sticky; top: 0; z-index: 2; height: 14px; margin: 0 calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter)); background: var(--elevated); touch-action: none; }
+.sheet-grabber { position: sticky; top: 0; z-index: 2; height: 14px; margin: 0 calc(-1 * var(--gutter-r)) 0 calc(-1 * var(--gutter)); border-radius: 30px 30px 0 0; background: var(--elevated); touch-action: none; }
 .sheet-grabber::before { content: ""; position: absolute; left: 50%; top: 6px; width: 36px; height: 5px; margin-left: -18px; border-radius: 3px; background: var(--label-3); }
 .sheet-header { position: sticky; top: 14px; z-index: 2; display: flex; align-items: center; justify-content: space-between; min-height: 48px; margin: 0 calc(-1 * var(--gutter-r)) 6px calc(-1 * var(--gutter)); padding: 0 calc(var(--gutter-r) - 8px) 0 var(--gutter); background: var(--elevated); touch-action: none; }
 .sheet-header .icon-button::before { background: var(--elevated-2); }
 #detail-content { display: grid; gap: 0; }
-#detail-content > * { animation: rise-in .45s var(--spring) both; }
-#detail-content > :nth-child(2) { animation-delay: .02s; }
-#detail-content > :nth-child(3) { animation-delay: .04s; }
-#detail-content > :nth-child(n+4) { animation-delay: .06s; }
 #detail-title { font: 700 28px/1.15 var(--font-display); letter-spacing: -.025em; overflow-wrap: anywhere; }
-.detail-balance { font: 700 36px/1.1 var(--font-display); letter-spacing: -.03em; margin: 6px 0 2px; }
+.detail-balance { font: 700 36px/1.1 var(--font-display); font-variant-numeric: tabular-nums; transform: translateZ(0); letter-spacing: 0; margin: 6px 0 2px; }
 #detail-content > .subtle, #detail-content > .small-label { margin-top: 6px; }
 .coverage-text { margin: 12px 0 8px; font-size: 15px; line-height: 1.45; color: var(--label-2); }
 .detail-line { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 48px; padding: 8px 0; font-size: 15px; box-shadow: inset 0 -.5px 0 var(--sep); }
@@ -630,10 +669,31 @@ dialog.sheet.closing::backdrop { animation: fade-out .26s ease-in forwards; }
 .detail-callout { margin-top: 16px; padding: 14px 16px; border-radius: 16px; background: var(--fill-2); font-size: 13px; line-height: 1.45; color: var(--label-2); }
 .position-symbol { display: block; font-weight: 700; color: var(--label); }
 .position-name { display: block; font-size: 12px; color: var(--label-2); font-weight: 400; }
-.sheet-title { margin: 2px 0 18px; box-shadow: 0 18px 40px rgba(0, 0, 0, .45), inset 0 .5px 0 rgba(255, 255, 255, .22); grid-template-areas: "icon . ." ". . ." "name name name"; }
+.sheet-title { margin: 2px 0 18px; box-shadow: 0 6px 18px rgba(0, 0, 0, .12), inset 0 .5px 0 rgba(255, 255, 255, .14); grid-template-areas: "icon . ." ". . ." "name name name"; }
 .sheet-title > div, .sheet-title > h2 { grid-area: name; align-self: end; display: grid; gap: 2px; }
 .sheet-title #detail-title { font-size: 26px; }
 .sheet-title .subtle { color: inherit; opacity: .78; font-size: 14px; font-weight: 600; }
+.sheet-title.wallet-face { grid-template-areas: "icon name amount" ". . ." "sub sub chev"; transform-origin: 0 0; transform: translate3d(0, 0, 0); will-change: transform; transition: none; clip-path: inset(0 round 18px); }
+#detail .wallet-face .account-info { display: contents; }
+.wallet-face #detail-title.account-name { grid-area: name; align-self: center; font-size: 16px; font-weight: 700; letter-spacing: -.01em; line-height: 1.35; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#detail .wallet-face .account-amount { grid-area: amount; align-self: center; font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
+#detail .wallet-face .account-sub { grid-area: sub; align-self: end; font-size: 12px; font-weight: 700; color: inherit; letter-spacing: .08em; text-transform: uppercase; opacity: .78; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.wallet-face .account-chevron { grid-area: chev; align-self: end; opacity: .7; width: 16px; height: 16px; }
+dialog.sheet.wallet-opening, dialog.sheet.wallet-closing { overflow: visible; background: transparent; isolation: isolate; }
+dialog.sheet.wallet-opening { animation: wallet-shadow-in .54s ease-out both; }
+dialog.sheet.wallet-closing { animation: wallet-shadow-out .36s ease-in both; }
+@keyframes wallet-shadow-in { from { box-shadow: 0 -8px 28px transparent; } to { box-shadow: var(--sheet-shadow); } }
+@keyframes wallet-shadow-out { from { box-shadow: var(--wallet-shadow-start, var(--sheet-shadow)); } to { box-shadow: 0 -8px 28px transparent; } }
+@keyframes wallet-surface-in { from { opacity: .92; } to { opacity: 1; } }
+@keyframes wallet-surface-out { from { opacity: var(--wallet-surface-opacity, 1); } to { opacity: 0; } }
+@keyframes wallet-backdrop-out { from { opacity: var(--wallet-backdrop-opacity, 1); } to { opacity: 0; } }
+dialog.sheet.wallet-opening::before, dialog.sheet.wallet-closing::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; clip-path: inset(0 round 30px 30px 0 0); background: var(--elevated); pointer-events: none; }
+dialog.sheet.wallet-opening::before { animation: wallet-surface-in .54s ease-out both; }
+dialog.sheet.wallet-closing::before { animation: wallet-surface-out .36s ease-in both; }
+dialog.sheet.wallet-closing::backdrop { animation: wallet-backdrop-out .36s ease-in both; }
+.wallet-opening .sheet-grabber, .wallet-closing .sheet-grabber,
+.wallet-opening .sheet-header, .wallet-closing .sheet-header { background: transparent; }
+.wallet-opening .wallet-face, .wallet-closing .wallet-face { z-index: 4; will-change: transform; }
 #detail .account-row { grid-template-columns: 34px minmax(0, 1fr) auto 14px; margin-top: 10px; border-radius: 16px; background: var(--elevated-2); }
 #detail .account-info { display: grid; gap: 1px; min-width: 0; }
 #detail .account-name { font-weight: 600; }
@@ -696,8 +756,6 @@ body.loading #summary-history-slot::before { content: ""; display: block; height
 @keyframes shimmer { to { transform: translateX(100%); } }
 
 /* Card flight layer (top layer, above the sheet) */
-.card-flight { position: fixed; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; background: none; overflow: visible; pointer-events: none; }
-.card-flight > .account-row { position: fixed; margin: 0; transform-origin: 0 0; will-change: transform; }
 
 /* Wide screens */
 @media (min-width: 760px) {

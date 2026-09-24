@@ -2,11 +2,11 @@
 
 const VERSION = '0.7.0';
 const sources = {
-  ibkr: {name: 'Interactive Brokers', short: 'IB', icon: 'chart-no-axes-combined', category: 'investments'},
-  multimoney: {name: 'MultiMoney', short: 'M', icon: 'sprout', category: 'cash'},
-  bac_bank: {name: 'BAC', short: 'BAC', icon: 'landmark', category: 'cash'},
-  bac_pension: {name: 'BAC Pensiones', short: 'BAC', icon: 'landmark', category: 'pension'},
-  binance: {name: 'Binance', icon: 'bitcoin', category: 'investments'},
+  ibkr: {name: 'Interactive Brokers', logo: 'brand-ibkr.png', icon: 'chart-no-axes-combined', category: 'investments'},
+  multimoney: {name: 'MultiMoney', logo: 'brand-multimoney.svg', icon: 'sprout', category: 'cash'},
+  bac_bank: {name: 'BAC', logo: 'brand-bac.svg', icon: 'landmark', category: 'cash'},
+  bac_pension: {name: 'BAC Pensiones', logo: 'brand-bac.svg', icon: 'landmark', category: 'pension'},
+  binance: {name: 'Binance', logo: 'brand-binance.ico', icon: 'bitcoin', category: 'investments'},
   espp: {name: 'ESPP', icon: 'briefcase-business', category: 'espp'},
   asociacion: {name: 'Asociaci\u00f3n solidarista', icon: 'building-2', category: 'association'}
 };
@@ -216,9 +216,6 @@ function renderHistory() {
   select('#history-summary').hidden = true;
   select('#history-heading').textContent = historyMetric === 'worth' ? I18n.translate('Evoluci\u00f3n') : historyMetric === 'stocks' ? I18n.translate('Evoluci\u00f3n de ganancias') : `${historyMetric.toUpperCase()} \u00b7 ${I18n.translate('Valor USD')}`;
   select('#history-rows').innerHTML = hiddenAmounts ? '' : points.slice().reverse().map(point => line(dateLabel(point.date, true), point.value == null ? 'Sin dato' : money(point.value, denomination))).join('');
-  select('#history-milestones')?.remove();
-  const milestones = historyMetric === 'worth' && !hiddenAmounts && points.length ? (snapshot.planning?.items || []).filter(item => item.kind === 'milestone' && item.date >= points[0].date && item.date <= points.at(-1).date) : [];
-  if (milestones.length) select('#history-observations').insertAdjacentHTML('afterend', `<details id="history-milestones" class="disclosure"><summary>${I18n.translate('Hitos del periodo')}</summary>${milestones.map(item => `<button class="setting-row" data-plan-edit="${escapeHTML(item.id)}"><span data-no-translate>${escapeHTML(item.name)}</span><span class="small-label">${escapeHTML(dateLabel(item.date))}</span>${icon('pencil')}</button>`).join('')}</details>`);
   chart.setAttribute('aria-label', hiddenAmounts ? I18n.translate('Importes ocultos') : `${I18n.translate('Observaciones')} ${historyMetric.toUpperCase()} (${denomination})`);
   chart.setAttribute('aria-valuemin', '0');
   chart.setAttribute('aria-valuemax', String(Math.max(0, known.length - 1)));
@@ -266,7 +263,6 @@ function renderHistory() {
   context.globalAlpha = .22; context.beginPath(); context.arc(horizontal(last), vertical(last), 9, 0, Math.PI * 2); context.fill();
   context.globalAlpha = 1; context.beginPath(); context.arc(horizontal(last), vertical(last), 4, 0, Math.PI * 2); context.fill();
   context.fillStyle = themeStyle.getPropertyValue('--tint').trim();
-  milestones.forEach(item => { context.beginPath(); context.arc(horizontal(item), height - 6, 3, 0, Math.PI * 2); context.fill(); });
   chartModel = {chart, context, width, height, scale, denomination, color, first: historyMetric === 'worth' && known.length > 1 ? known[0].value : null,
     image: context.getImageData(0, 0, chart.width, chart.height),
     points: known.map(point => ({...point, horizontal: horizontal(point), vertical: vertical(point)}))};
@@ -367,11 +363,17 @@ function accountTitle(account) {
   return `${product(account)} ${account.currency}`;
 }
 function entity(source) { return sources[source] || {name: 'Otra cuenta', icon: 'wallet', category: 'other'}; }
-function entityIcon(source) { const data = entity(source); return `<span class="entity-icon ${escapeHTML(source)}">${data.short ? escapeHTML(data.short) : icon(data.icon)}</span>`; }
+function entityIcon(source) {
+  const data = entity(source);
+  return `<span class="entity-icon ${escapeHTML(source)}${data.logo ? ' official-logo' : ''}">${data.logo ? `<img src="./${data.logo}" width="34" height="34" alt="${escapeHTML(data.name)}" draggable="false">` : icon(data.icon)}</span>`;
+}
+function accountFace(account, detail = false) {
+  const title = escapeHTML(accountTitle(account));
+  return `${entityIcon(account.source)}<span class="account-info">${detail ? `<h2 id="detail-title" class="account-name">${title}</h2>` : `<span class="account-name">${title}</span>`}<span class="account-sub">${escapeHTML(account.source === 'ibkr' ? 'Acciones y efectivo' : entity(account.source).name)}</span></span><span class="account-amount sensitive">${money(account.balance, account.currency)}</span>${icon('chevron-right').replace('<i ', '<i class="account-chevron" ')}`;
+}
 function accountRow(account) {
   return `<button class="account-row" data-account="${escapeHTML(account.id)}" data-source="${escapeHTML(account.source)}" aria-label="Abrir ${escapeHTML(entity(account.source).name)} ${escapeHTML(accountTitle(account))}">
-    ${entityIcon(account.source)}<span class="account-info"><span class="account-name">${escapeHTML(accountTitle(account))}</span><span class="account-sub">${escapeHTML(account.source === 'ibkr' ? 'Acciones y efectivo' : entity(account.source).name)}</span></span>
-    <span class="account-amount sensitive">${money(account.balance, account.currency)}</span>${icon('chevron-right').replace('<i ', '<i class="account-chevron" ')}
+    ${accountFace(account)}
   </button>`;
 }
 let toastToken = 0;
@@ -402,14 +404,14 @@ function setNotice() {
     notice.textContent = '\u00daltima copia guardada. No se pudo comprobar una publicaci\u00f3n m\u00e1s reciente.';
   }
 }
-const allocationColors = {BAC:'#ff453a', MultiMoney:'#30d158', ROP:'#ffd60a', FCL:'#ac8e68',
-  INTC:'#0a84ff', BTC:'#ff9f0a', USDT:'#40c8e0', VOO:'#ff375f', QQQM:'#5e5ce6',
-  ESPP:'#bf5af2', Asociacion:'#64d2ff', Otros:'#636366'};
+const allocationColors = {BAC:'#a6192e', MultiMoney:'#abd100', ROP:'#d4314c', FCL:'#822038',
+  INTC:'#337ed0', BTC:'#d89a32', USDT:'#219c9a', VOO:'#cb557b', QQQM:'#7761ba',
+  ESPP:'#9d5ba9', Asociacion:'#3299b0', Otros:'#777e85'};
 let allocationModel = [];
 let allocationSelected = null;
 let allocationExpanded = false;
 let allocationAccounts = [];
-const otherColors = ['#8e8e93', '#d4a373', '#66d4cf', '#ff6482', '#7d7aff', '#e5c07b'];
+const otherColors = ['#858b93', '#b28c58', '#309e94', '#c15a7d', '#7b6bbe', '#c2a13f'];
 
 function allocationColor(name) {
   return allocationColors[name] || otherColors[Math.max(0, allocationModel.findIndex(item => item.name === name)) % otherColors.length];
@@ -768,8 +770,8 @@ function renderDetail(detail) {
   }
   if (detail.kind === 'account') {
     const account = snapshot.accounts.find(item => item.id === detail.id);
-    select('#detail-title').textContent = accountTitle(account);
-    select('.sheet-title .subtle').textContent = entity(account.source).name;
+    select('.sheet-title').classList.add('wallet-face');
+    select('.sheet-title').innerHTML = accountFace(account, true);
     select('#detail-content>.small-label').textContent = 'Saldo del informe';
     select('#detail-content>.subtle').textContent = 'Informe del ' + dateLabel(account.as_of, true);
     if (account.source === 'binance') {
@@ -825,12 +827,11 @@ function openDetail(kind, id, source) {
     select('#detail-close').focus({preventScroll: true});
   };
   const opening = !dialog.open;
+  const card = kind === 'account' && source?.closest('#all-accounts') ? source : null;
+  const origin = card?.getBoundingClientRect();
   present();
   if (!opening) return;
-  const target = source && kind === 'account' ? select('#detail .sheet-title') : null;
-  const card = source?.closest('#all-accounts') ? source : null;
-  if (card && target) DexNative.flyCard(card, target);
-  DexNative.presentSheet();
+  DexNative.presentSheet(card, origin);
 }
 function closeSheet() {
   const dialog = select('#detail');
@@ -1013,7 +1014,7 @@ setInterval(automaticRefresh, 60000);
 setInterval(() => { loadMarket(); loadAutomation(); }, 60000);
 window.addEventListener('hashchange', () => {
   const next = location.hash.slice(1) || 'resumen';
-  if (next !== currentView && ['resumen', 'rendimiento', 'cuentas', 'ajustes'].includes(next)) DexNative.transition(navigate);
+  if (next !== currentRoute) DexNative.transition(navigate);
   else navigate();
 });
 window.addEventListener('online', () => {

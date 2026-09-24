@@ -2,6 +2,11 @@
 
 const DexNative = (() => {
   const root = document.documentElement;
+  root.dataset.input = 'pointer';
+  document.addEventListener('pointerdown', () => { root.dataset.input = 'pointer'; }, {capture: true, passive: true});
+  document.addEventListener('keydown', event => {
+    if (['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) root.dataset.input = 'keyboard';
+  }, true);
   const dialog = document.getElementById('detail');
   const menu = document.getElementById('app-menu');
   const menuButton = document.getElementById('menu-open');
@@ -63,53 +68,95 @@ const DexNative = (() => {
     if (event.target.closest('.navigation a, .segmented button, .filter, .allocation-item, .allocation-toggle, input.switch, .chip-button')) haptic();
   });
 
+  let viewAnimation = null;
   function transition(update) {
     const before = document.querySelector('.view:not([hidden])');
+    viewAnimation?.cancel();
     update();
+    if (reduced() || !before) return;
     const after = document.querySelector('.view:not([hidden])');
-    if (reduced() || !after || after === before) return;
-    after.animate([{opacity: 0, transform: 'translateY(10px)'}, {opacity: 1, transform: 'none'}], {duration: 320, easing: 'cubic-bezier(.22, 1, .36, 1)'});
-  }
-
-  // Wallet-style flight: the tapped card rises into the sheet header on a layer above the sheet.
-  function flyCard(source, target) {
-    if (reduced() || !source || !target || typeof HTMLElement.prototype.showPopover !== 'function') return;
-    const from = source.getBoundingClientRect();
-    const to = target.getBoundingClientRect();
-    if (!from.width || !to.width) return;
-    const layer = document.createElement('div');
-    layer.popover = 'manual';
-    layer.className = 'card-flight wallet';
-    const clone = source.cloneNode(true);
-    clone.removeAttribute('data-account');
-    clone.setAttribute('aria-hidden', 'true');
-    clone.tabIndex = -1;
-    layer.append(clone);
-    document.body.append(layer);
-    clone.style.left = from.left + 'px';
-    clone.style.top = from.top + 'px';
-    clone.style.width = from.width + 'px';
-    clone.style.height = from.height + 'px';
-    layer.showPopover();
-    target.style.visibility = 'hidden';
-    source.style.visibility = 'hidden';
-    const flight = clone.animate([
-      {transform: 'translate(0, 0) scale(1)', boxShadow: '0 -10px 30px rgba(0,0,0,.55)'},
-      {transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${to.width / from.width}, ${to.height / from.height})`, boxShadow: '0 18px 40px rgba(0,0,0,.45)'}
-    ], {duration: 560, easing: SPRING, fill: 'forwards'});
-    const land = () => { target.style.visibility = ''; source.style.visibility = ''; layer.remove(); };
-    flight.finished.then(land, land);
+    const views = [...document.querySelectorAll('.view')];
+    const direction = views.indexOf(after) < views.indexOf(before) ? -1 : 1;
+    if (after) viewAnimation = after.animate([{transform: `translateX(${direction * 18}px)`}, {transform: 'none'}], {duration: 300, easing: 'cubic-bezier(.25, .8, .25, 1)'});
   }
 
   // Sheet presentation and interactive dismissal.
   let sheetAnimation = null;
-  function presentSheet() {
-    if (reduced()) return;
+  let walletSource = null;
+  let walletAnimations = [];
+  let walletToken = 0;
+  function clearWalletMotion() {
+    walletToken += 1;
+    walletAnimations.forEach(animation => animation.cancel());
+    walletAnimations = [];
+    dialog.classList.remove('wallet-opening', 'wallet-closing');
+  }
+  function restoreWalletSource() {
+    if (walletSource) walletSource.node.style.visibility = walletSource.visibility;
+    walletSource = null;
+  }
+  function cardTransform(from, to) {
+    return `translate3d(${from.left - to.left}px, ${from.top - to.top}px, 0) scale(${from.width / to.width}, ${from.height / to.height})`;
+  }
+  function stackedClip(source, bounds, natural) {
+    const next = source.nextElementSibling?.getBoundingClientRect();
+    const covered = next ? Math.max(0, Math.min(bounds.height, bounds.bottom - next.top)) : 0;
+    return `inset(0px 0px ${covered * natural.height / bounds.height}px 0px round 18px 18px ${covered ? 0 : 18}px ${covered ? 0 : 18}px)`;
+  }
+  function walletSurroundings() {
+    return [...dialog.querySelectorAll('.sheet-grabber, .sheet-header, #detail-content > :not(.wallet-face)')];
+  }
+  function presentSheet(source, origin) {
     sheetAnimation?.cancel();
-    sheetAnimation = dialog.animate([{transform: 'translateY(100%)'}, {transform: 'translateY(0)'}], {duration: 560, easing: SPRING});
+    clearWalletMotion();
+    restoreWalletSource();
+    dialog.style.transform = '';
+    if (reduced()) return;
+    const card = dialog.querySelector('.wallet-face');
+    if (source?.isConnected && card && origin?.width && origin.bottom > 0 && origin.top < innerHeight) {
+      const destination = card.getBoundingClientRect();
+      walletSource = {node: source, visibility: source.style.visibility};
+      source.style.visibility = 'hidden';
+      dialog.classList.add('wallet-opening');
+      const token = walletToken;
+      const flight = card.animate([{transform: cardTransform(origin, destination), clipPath: stackedClip(source, origin, destination)}, {transform: 'translate3d(0, 0, 0)', clipPath: 'inset(0px round 18px)'}], {duration: 540, easing: 'cubic-bezier(.32, .72, .2, 1)', fill: 'both'});
+      walletAnimations = [flight];
+      flight.finished.then(() => { if (token === walletToken) clearWalletMotion(); }, () => {});
+      return;
+    }
+    sheetAnimation = dialog.animate([{transform: 'translateY(28px)', opacity: 0}, {transform: 'translateY(0)', opacity: 1}], {duration: 320, easing: 'cubic-bezier(.22, 1, .36, 1)'});
   }
   function dismissSheet(done) {
+    const card = dialog.querySelector('.wallet-face');
+    const current = card?.getBoundingClientRect();
+    const currentClip = card ? getComputedStyle(card).clipPath : null;
+    const shadow = getComputedStyle(dialog).boxShadow;
+    const surfaceOpacity = getComputedStyle(dialog, '::before').opacity;
+    const backdropOpacity = getComputedStyle(dialog, '::backdrop').opacity;
+    const surroundings = walletSurroundings().map(element => ({element, opacity: getComputedStyle(element).opacity}));
+    const destination = walletSource?.node.isConnected ? walletSource.node.getBoundingClientRect() : null;
+    clearWalletMotion();
     sheetAnimation?.cancel();
+    if (!reduced() && card && current?.width && destination?.width && destination.bottom > 0 && destination.top < innerHeight && current.bottom > 0 && current.top < innerHeight) {
+      dialog.style.transform = '';
+      const natural = card.getBoundingClientRect();
+      dialog.style.setProperty('--wallet-shadow-start', shadow);
+      dialog.style.setProperty('--wallet-surface-opacity', surfaceOpacity);
+      dialog.style.setProperty('--wallet-backdrop-opacity', backdropOpacity);
+      dialog.classList.add('closing', 'wallet-closing');
+      const token = walletToken;
+      const flight = card.animate([{transform: cardTransform(current, natural), clipPath: currentClip}, {transform: cardTransform(destination, natural), clipPath: stackedClip(walletSource.node, destination, natural)}], {duration: 360, easing: 'cubic-bezier(.4, 0, .2, 1)', fill: 'both'});
+      walletAnimations = [flight, ...surroundings.map(({element, opacity}) => element.animate([{opacity}, {opacity: 0}], {duration: 240, fill: 'both'}))];
+      flight.finished.then(() => {
+        if (token !== walletToken) return;
+        restoreWalletSource();
+        done();
+        clearWalletMotion();
+        dialog.classList.remove('closing');
+      }, () => {});
+      return;
+    }
+    restoreWalletSource();
     if (reduced()) { dialog.style.transform = ''; done(); return; }
     const offset = new DOMMatrixReadOnly(getComputedStyle(dialog).transform).m42 || 0;
     dialog.classList.add('closing');
@@ -119,6 +166,7 @@ const DexNative = (() => {
     animation.finished.then(finish, finish);
   }
   let drag = null;
+  dialog.addEventListener('close', () => { clearWalletMotion(); restoreWalletSource(); });
   function dragStart(y, handle) {
     if (!dialog.open || dialog.classList.contains('closing')) return;
     drag = {origin: y, last: y, time: performance.now(), velocity: 0, offset: 0, active: handle};
@@ -334,5 +382,5 @@ const DexNative = (() => {
   });
   navigator.serviceWorker?.addEventListener('controllerchange', () => { if (applying) { applying = false; location.reload(); } });
 
-  return {haptic, transition, flyCard, presentSheet, dismissSheet, viewChanged, watch, reduced, ios};
+  return {haptic, transition, presentSheet, dismissSheet, viewChanged, watch, reduced, ios};
 })();
