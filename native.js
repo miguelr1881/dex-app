@@ -201,7 +201,7 @@ const DexNative = (() => {
     if (!reduced() && offset) sheetAnimation = dialog.animate([{transform: `translateY(${offset}px)`}, {transform: 'translateY(0)'}], {duration: 480, easing: SPRING});
   }
   dialog.addEventListener('touchstart', event => {
-    if (event.target.closest('.perspective-body')) { drag = null; return; }
+    if (dialog.querySelector('.perspective-body') && (!event.target.closest('.sheet-grabber, .sheet-header') || event.target.closest('button, input, select, textarea'))) { drag = null; return; }
     if (event.touches.length === 1) dragStart(event.touches[0].clientY, !!event.target.closest('.sheet-grabber, .sheet-header'));
   }, {passive: true});
   dialog.addEventListener('touchmove', event => dragMove(event.touches[0].clientY, event), {passive: false});
@@ -317,7 +317,20 @@ const DexNative = (() => {
   if (viewport) { viewport.addEventListener('resize', fitKeyboard); viewport.addEventListener('scroll', fitKeyboard); }
   document.addEventListener('focusin', event => {
     if (!dialog.contains(event.target) || !event.target.matches('input:not([type=checkbox]), select, textarea')) return;
-    setTimeout(() => event.target.scrollIntoView({block: 'center', behavior: reduced() ? 'auto' : 'smooth'}), 320);
+    const target = event.target;
+    const scrollBody = target.closest('.perspective-body');
+    if (scrollBody && target.type === 'range') return;
+    setTimeout(() => {
+      if (!dialog.open || !target.isConnected || document.activeElement !== target) return;
+      if (!scrollBody) { target.scrollIntoView({block: 'center', behavior: reduced() ? 'auto' : 'smooth'}); return; }
+      const bounds = scrollBody.getBoundingClientRect();
+      const field = target.getBoundingClientRect();
+      const headline = scrollBody.querySelector('.projection-headline')?.getBoundingClientRect();
+      const top = headline && headline.top <= bounds.top + 1 ? headline.bottom + 8 : bounds.top + 8;
+      const bottom = bounds.bottom - 8;
+      const offset = field.bottom > bottom ? field.bottom - bottom : field.top < top ? field.top - top : 0;
+      if (offset) scrollBody.scrollBy({top: offset, behavior: 'auto'});
+    }, 320);
   });
 
   // Install prompt: native prompt where available, instructions on iOS Safari.

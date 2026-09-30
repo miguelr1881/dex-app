@@ -665,7 +665,7 @@ dialog.sheet.closing::backdrop { animation: fade-out .26s ease-in forwards; }
 .distribution-actions { display: flex; align-items: center; gap: 6px; }
 .perspective-tabs { margin: 22px 0 8px; width: 100%; min-width: 0; }
 .perspective-tabs button { min-width: 0; min-height: 44px; padding: 8px 5px; font-size: 13px; }
-.perspective-body { height: min(540px, 60dvh); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; letter-spacing: 0; }
+.perspective-body { height: min(540px, 60dvh); overflow-x: hidden; overflow-y: auto; overscroll-behavior: none; touch-action: pan-y pinch-zoom; scrollbar-width: none; letter-spacing: 0; }
 .perspective-body::-webkit-scrollbar { display: none; }
 dialog.sheet[open]:has(.perspective-body) { display: flex; flex-direction: column; overflow: hidden; }
 dialog.sheet:has(.perspective-body) > .sheet-header, dialog.sheet:has(.perspective-body) > .sheet-grabber { flex-shrink: 0; }
@@ -706,8 +706,8 @@ dialog.sheet:has(.perspective-body) > .sheet-header, dialog.sheet:has(.perspecti
 .projection-stats > div { display: grid; gap: 6px; }
 .projection-stats strong { font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }
 .projection-disclosure { border-top: .5px solid var(--sep); }
-.projection-disclosure > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; font-size: 15px; }
-.projection-disclosure > summary::after { margin-left: auto; }
+.projection-disclosure > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding-right: 4px; font-size: 15px; }
+.projection-disclosure > summary::after { flex-shrink: 0; margin-left: auto; }
 #projection-rate-summary, #projection-monthly-total { margin-left: auto; font-variant-numeric: tabular-nums; }
 .projection-contribution { width: 120px; }
 .projection-row:has(.projection-contribution) { grid-template-columns: minmax(0, 1fr) 120px; }

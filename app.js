@@ -900,6 +900,7 @@ function updateProjectionReadout() {
 function bindProjectionChart() {
   const chart = select('#projection-chart');
   let keyboardInteraction = false;
+  let touchGesture = null;
   const choose = event => {
     if (hiddenAmounts || !projectionChartModel || event.isPrimary === false) return;
     const bounds = chart.getBoundingClientRect();
@@ -911,13 +912,29 @@ function bindProjectionChart() {
     if (event.button !== 0 || hiddenAmounts) return;
     keyboardInteraction = false;
     chart.setPointerCapture(event.pointerId);
-    choose(event);
+    if (event.pointerType === 'touch') touchGesture = {x: event.clientX, y: event.clientY, scrolling: false, horizontal: false};
+    else choose(event);
   });
   chart.addEventListener('pointermove', event => {
     if (keyboardInteraction) return;
+    if (event.pointerType === 'touch') {
+      if (!touchGesture || touchGesture.scrolling) return;
+      if (!touchGesture.horizontal) {
+        const distanceX = Math.abs(event.clientX - touchGesture.x);
+        const distanceY = Math.abs(event.clientY - touchGesture.y);
+        if (Math.max(distanceX, distanceY) < 8) return;
+        if (distanceY >= distanceX) { touchGesture.scrolling = true; return; }
+        touchGesture.horizontal = true;
+      }
+    }
     if (event.pointerType === 'mouse' || chart.hasPointerCapture(event.pointerId)) choose(event);
   });
-  chart.addEventListener('pointerup', event => { if (chart.hasPointerCapture(event.pointerId)) chart.releasePointerCapture(event.pointerId); });
+  chart.addEventListener('pointerup', event => {
+    if (event.pointerType === 'touch' && touchGesture && !touchGesture.scrolling) choose(event);
+    touchGesture = null;
+    if (chart.hasPointerCapture(event.pointerId)) chart.releasePointerCapture(event.pointerId);
+  });
+  chart.addEventListener('pointercancel', () => { touchGesture = null; });
   chart.addEventListener('keydown', event => {
     if (hiddenAmounts || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
@@ -970,6 +987,22 @@ function renderPerspective() {
       perspectiveView = button.dataset.perspective;
       renderPerspective();
     }));
+    const scrollBody = select('#perspective-body');
+    let lastTouch = null;
+    scrollBody.addEventListener('touchstart', event => {
+      lastTouch = event.touches.length === 1 ? event.touches[0].clientY : null;
+    }, {passive: true});
+    scrollBody.addEventListener('touchmove', event => {
+      if (event.touches.length !== 1 || lastTouch == null) { lastTouch = null; return; }
+      const current = event.touches[0].clientY;
+      const delta = current - lastTouch;
+      lastTouch = current;
+      const atStart = scrollBody.scrollTop <= 0;
+      const atEnd = scrollBody.scrollTop + scrollBody.clientHeight >= scrollBody.scrollHeight - 1;
+      if (((delta > 0 && atStart) || (delta < 0 && atEnd)) && event.cancelable) event.preventDefault();
+    }, {passive: false});
+    scrollBody.addEventListener('touchend', () => { lastTouch = null; });
+    scrollBody.addEventListener('touchcancel', () => { lastTouch = null; });
   }
   all('[data-perspective]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.perspective === perspectiveView)));
   const body = select('#perspective-body');
