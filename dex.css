@@ -708,6 +708,8 @@ dialog.sheet:has(.perspective-body) > .sheet-header, dialog.sheet:has(.perspecti
 .projection-disclosure { border-top: .5px solid var(--sep); }
 .projection-disclosure > summary { display: flex; align-items: center; gap: 12px; min-height: 52px; padding-right: 4px; font-size: 15px; }
 .projection-disclosure > summary::after { flex-shrink: 0; margin-left: auto; }
+#projection-rates > .setting-row { grid-template-columns: minmax(0, 1fr) 51px; padding: 10px 0; }
+#projection-rates > .setting-row .setting-label { font-size: 15px; }
 #projection-rate-summary, #projection-monthly-total { margin-left: auto; font-variant-numeric: tabular-nums; }
 .projection-contribution { width: 120px; }
 .projection-row:has(.projection-contribution) { grid-template-columns: minmax(0, 1fr) 120px; }
