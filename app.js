@@ -647,8 +647,8 @@ let perspectiveView = 'balance';
 let projectionYears = 10;
 const projectionRates = new Map();
 const projectionContributions = new Map();
-let projectionUseGeneralRate = false;
-let projectionGeneralRate = '0';
+let projectionUseGeneralRate = true;
+let projectionGeneralRate = '7';
 let projectionVariation = '0';
 let projectionSelectedYear = null;
 let projectionChartModel = null;
@@ -944,9 +944,103 @@ function bindProjectionChart() {
     updateProjectionReadout();
   });
 }
+function syncProjectionSteppers() {
+  all('.projection-stepper').forEach(control => {
+    const input = control.querySelector('input');
+    const value = Number(input.value || input.dataset.previousValue || '0');
+    control.querySelector('[data-direction="-1"]').disabled = input.disabled || value <= Number(input.min);
+    control.querySelector('[data-direction="1"]').disabled = input.disabled || value >= Number(input.max);
+  });
+}
+function bindProjectionRepeat(button, change) {
+  let timer = null;
+  let pointer = null;
+  let suppressClick = false;
+  const stop = () => {
+    clearTimeout(timer);
+    timer = null;
+    pointer = null;
+    window.removeEventListener('blur', cancel);
+    document.removeEventListener('visibilitychange', cancel);
+  };
+  const cancel = () => { suppressClick = true; stop(); };
+  const repeat = () => {
+    if (!pointer || button.disabled || !button.isConnected || !select('#detail').open || document.hidden) { cancel(); return; }
+    suppressClick = true;
+    change();
+    timer = setTimeout(repeat, 130);
+  };
+  button.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || event.isPrimary === false || button.disabled) return;
+    stop();
+    suppressClick = false;
+    pointer = {id: event.pointerId, x: event.clientX, y: event.clientY};
+    button.setPointerCapture(event.pointerId);
+    window.addEventListener('blur', cancel);
+    document.addEventListener('visibilitychange', cancel);
+    timer = setTimeout(repeat, 450);
+  });
+  button.addEventListener('pointermove', event => {
+    if (!pointer || event.pointerId !== pointer.id) return;
+    const bounds = button.getBoundingClientRect();
+    if (Math.hypot(event.clientX - pointer.x, event.clientY - pointer.y) > 8 ||
+        event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) cancel();
+  });
+  button.addEventListener('pointerup', event => { if (pointer?.id === event.pointerId) stop(); });
+  button.addEventListener('pointercancel', cancel);
+  button.addEventListener('lostpointercapture', stop);
+  button.addEventListener('contextmenu', event => event.preventDefault());
+  button.addEventListener('click', event => {
+    event.preventDefault();
+    if (suppressClick && event.detail !== 0) { suppressClick = false; return; }
+    if (!button.disabled) change();
+  });
+}
+function bindProjectionInputs() {
+  all('.projection-input').forEach(input => {
+    input.dataset.previousValue = input.value;
+    input.addEventListener('focus', () => input.select());
+    input.addEventListener('click', () => input.select());
+    input.addEventListener('input', () => {
+      if (input.validity.valid && input.value !== '') input.dataset.previousValue = input.value;
+    });
+    input.addEventListener('blur', () => {
+      if (!input.disabled && input.value === '') {
+        input.value = input.dataset.previousValue;
+        input.dispatchEvent(new Event('input', {bubbles: true}));
+      }
+    });
+    if (!input.matches('[data-projection-rate], #projection-general, #projection-variation')) return;
+    const control = document.createElement('span');
+    control.className = 'projection-stepper';
+    input.before(control);
+    control.append(input);
+    const name = input.getAttribute('aria-label') || I18n.translate(input.id === 'projection-general' ? 'Tasa general' : 'Variaci\u00f3n global');
+    input.setAttribute('aria-label', name);
+    for (const direction of [-1, 1]) {
+      const button = document.createElement('button');
+      const label = `${I18n.translate(direction < 0 ? 'Bajar' : 'Subir')}: ${name}`;
+      button.type = 'button';
+      button.dataset.direction = String(direction);
+      button.setAttribute('aria-label', label);
+      button.title = label;
+      button.innerHTML = icon(direction < 0 ? 'minus' : 'plus');
+      bindProjectionRepeat(button, () => {
+        if (input.disabled) return;
+        const current = Number(input.value || input.dataset.previousValue || '0');
+        const next = Math.min(Number(input.max) * 100, Math.max(Number(input.min) * 100, Math.round(current * 100) + direction * 50));
+        input.value = String(next / 100);
+        input.dispatchEvent(new Event('input', {bubbles: true}));
+      });
+      if (direction < 0) control.prepend(button); else control.append(button);
+    }
+  });
+  syncProjectionSteppers();
+}
 function renderScenario() {
   const model = perspectiveModel();
   if (!model || !select('#scenario-result')) return;
+  syncProjectionSteppers();
   const invalid = all('.projection-input:not(:disabled)').some(input => !input.validity.valid || input.value === '');
   select('#projection-error').hidden = !invalid;
   select('#projection-result').hidden = invalid;
@@ -1029,6 +1123,7 @@ function renderPerspective() {
         <div class="projection-stats"><div><span class="small-label">${I18n.translate('Inicial')}</span><strong id="projection-start" class="sensitive"></strong></div><div><span class="small-label">${I18n.translate('Aportado')}</span><strong id="projection-deposited" class="sensitive"></strong></div><div><span class="small-label">${I18n.translate('Crecimiento')}</span><strong id="projection-gain" class="sensitive"></strong></div></div>
       </div>
       <details id="projection-rates" class="disclosure projection-disclosure"><summary>${I18n.translate('Tasas anuales')}<span id="projection-rate-summary" class="small-label"></span></summary>
+        <p class="subtle projection-rate-note">${I18n.translate('Supuestos de proyecci\u00f3n, no tasas contratadas ni rendimientos garantizados.')}</p>
         <label class="setting-row"><span class="setting-label">${I18n.translate('Una tasa para todos')}</span><input id="projection-rate-mode" class="switch" type="checkbox" role="switch" ${projectionUseGeneralRate ? 'checked' : ''}></label>
         <label id="projection-general-row" class="projection-horizon" ${projectionUseGeneralRate ? '' : 'hidden'}><span>${I18n.translate('Tasa general')}</span><span class="projection-rate"><input id="projection-general" class="projection-input" type="number" inputmode="decimal" min="-100" max="100" step="0.01" required value="${projectionGeneralRate}" ${projectionUseGeneralRate ? '' : 'disabled'}><span>%</span></span></label>
         <label class="projection-horizon"><span>${I18n.translate('Variaci\u00f3n global')} \u00b1</span><span class="projection-rate"><input id="projection-variation" class="projection-input" type="number" inputmode="decimal" min="0" max="100" step="0.01" required value="${projectionVariation}"><span>pp</span></span></label>
@@ -1079,6 +1174,7 @@ function renderPerspective() {
       projectionSelectedYear = null;
       renderScenario();
     }));
+    bindProjectionInputs();
     projectionSelectedYear = null;
     bindProjectionChart();
     renderScenario();

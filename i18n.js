@@ -4,6 +4,8 @@ const I18n = (() => {
   let language = 'es';
   try { if (localStorage.getItem('dex.language') === 'en') language = 'en'; } catch {}
   const catalog = new Map([
+    ['Bajar', 'Decrease'], ['Subir', 'Increase'],
+    ['Supuestos de proyecci\u00f3n, no tasas contratadas ni rendimientos garantizados.', 'Projection assumptions, not contractual rates or guaranteed returns.'],
     ['Proyecci\u00f3n base', 'Base projection'], ['Capital y aportes', 'Capital and contributions'], ['Inicial', 'Initial'], ['Aportado', 'Contributed'],
     ['Una tasa para todos', 'One rate for all'], ['Tasa general', 'Overall rate'], ['Variaci\u00f3n global', 'Global variation'],
     ['Aportes mensuales', 'Monthly contributions'], ['Aporte mensual USD', 'Monthly contribution USD'], ['mes', 'month'],
