@@ -166,7 +166,10 @@ const DexNative = (() => {
     animation.finished.then(finish, finish);
   }
   let drag = null;
-  dialog.addEventListener('close', () => { clearWalletMotion(); restoreWalletSource(); });
+  dialog.addEventListener('close', () => {
+    if (dialog.open) return;
+    clearWalletMotion(); restoreWalletSource();
+  });
   function dragStart(y, handle) {
     if (!dialog.open || dialog.classList.contains('closing')) return;
     drag = {origin: y, last: y, time: performance.now(), velocity: 0, offset: 0, active: handle};
@@ -198,6 +201,7 @@ const DexNative = (() => {
     if (!reduced() && offset) sheetAnimation = dialog.animate([{transform: `translateY(${offset}px)`}, {transform: 'translateY(0)'}], {duration: 480, easing: SPRING});
   }
   dialog.addEventListener('touchstart', event => {
+    if (event.target.closest('.perspective-body')) { drag = null; return; }
     if (event.touches.length === 1) dragStart(event.touches[0].clientY, !!event.target.closest('.sheet-grabber, .sheet-header'));
   }, {passive: true});
   dialog.addEventListener('touchmove', event => dragMove(event.touches[0].clientY, event), {passive: false});

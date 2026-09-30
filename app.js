@@ -315,7 +315,7 @@ function selectedTotal(total = snapshot.total_usd) {
     excludedCount: new Set(parts.filter(item => excludedSources.has(item.key)).map(item => item.key)).size};
 }
 function renderComposition() {
-  select('#detail-eyebrow').textContent = 'TODO USD';
+  select('#detail-eyebrow').textContent = I18n.translate('Todo USD').toUpperCase();
   const keys = [...new Set(totalParts(snapshot.total_usd).map(item => item.key))];
   select('#detail-content').innerHTML = `<h2 id="detail-title">Incluir en mi patrimonio</h2><div>${keys.map(key => `<label class="setting-row"><span class="setting-label">${escapeHTML(selectionNames[key] || key)}</span><input type="checkbox" class="switch" role="switch" data-include="${escapeHTML(key)}" ${excludedSources.has(key) ? '' : 'checked'}></label>`).join('')}</div><p class="detail-callout">Los saldos originales se conservan. Las restas personales siguen descont\u00e1ndose del total seleccionado.</p>`;
   all('[data-include]').forEach(input => input.addEventListener('change', () => {
@@ -625,6 +625,436 @@ async function queueRemoteChange(kind, change) {
   await load();
 }
 function line(label, content) { return `<div class="detail-line"><span>${escapeHTML(label)}</span><span>${content}</span></div>`; }
+function periodMarkup(account) {
+  const activity = account.period_activity;
+  if (!activity || !['bank', 'pension', 'broker'].includes(activity.kind)) return '';
+  if (activity.kind === 'broker') {
+    const changes = activity.changes || {};
+    const earned = ['dividends', 'brokerInterest', 'bondInterest', 'insuredDepositInterest'].reduce((sum, key) => sum + decimal(changes[key] || '0'), 0n);
+    const change = decimal(activity.closing) - decimal(activity.opening);
+    const names = {deposits: 'Dep\u00f3sitos', withdrawals: 'Retiros', commissions: 'Comisiones', clientFees: 'Cargos al cliente', accountTransfers: 'Transferencias de cuenta', internalTransfers: 'Transferencias internas', linkingAdjustments: 'Ajustes de vinculaci\u00f3n', debitCardActivity: 'Actividad de tarjeta', billPay: 'Pagos de facturas', dividends: 'Dividendos', brokerInterest: 'Intereses', bondInterest: 'Intereses de bonos', netTradesSales: 'Ventas de posiciones', netTradesPurchases: 'Compras de posiciones', otherFees: 'Otros cargos', advisorFees: 'Cargos de asesor\u00eda', brokerFees: 'Cargos del broker', paymentInLieu: 'Pagos sustitutivos', transactionTax: 'Impuestos de operaciones', withholdingTax: 'Retenciones', withholdingCollectedTax: 'Retenciones recaudadas', salesTax: 'Impuestos de ventas', otherIncome: 'Otros ingresos', other: 'Otros movimientos', insuredDepositInterest: 'Intereses de dep\u00f3sitos', referralFee: 'Bonificaciones', donations: 'Donaciones'};
+    return `<section class="period-insight"><h3>${I18n.translate('Este periodo')}</h3><p class="subtle">${escapeHTML(dateLabel(activity.start, true))} &ndash; ${escapeHTML(dateLabel(activity.end, true))}</p><p class="insight-value sensitive">${money(decimalString(earned !== 0n ? earned : change), account.currency)}</p><p class="subtle">${I18n.translate(earned !== 0n ? 'Dividendos e intereses reportados' : 'Cambio de efectivo')}</p><details class="disclosure"><summary>${I18n.translate('Ver desglose')}</summary>${line(I18n.translate('Efectivo inicial'), money(activity.opening, account.currency))}${Object.entries(changes).filter(([key, value]) => names[key] && decimal(value) !== 0n).map(([key, value]) => line(I18n.translate(names[key]), money(value, account.currency))).join('')}${line(I18n.translate('Efectivo final'), money(activity.closing, account.currency))}<p class="subtle">${I18n.translate('Flujos de efectivo del informe. Dividendos e intereses antes de los cargos y retenciones mostrados; no son la ganancia de las posiciones.')}</p></details></section>`;
+  }
+  const pension = activity.kind === 'pension';
+  const change = decimal(activity.closing) - decimal(activity.opening);
+  const earned = pension ? decimal(activity.earnings) + decimal(activity.fees) : decimal(activity.interest);
+  const title = pension ? 'Rendimientos menos comisiones' : earned !== 0n ? 'Intereses acreditados' : 'Cambio de saldo';
+  const fields = pension ? [['contributions', 'Aportes del periodo'], ['earnings', 'Rendimientos reportados'], ['fees', 'Comisiones'], ['transfers', 'Traslados'], ['withdrawals', 'Retiros'], ['corrections', 'Correcciones']] : [['inflows', 'Entradas'], ['outflows', 'Salidas'], ['salary', 'Quincenas identificadas'], ['card_payments', 'Pagos a tarjetas']];
+  return `<section class="period-insight"><h3>${I18n.translate('Este periodo')}</h3><p class="subtle">${escapeHTML(dateLabel(activity.start, true))} &ndash; ${escapeHTML(dateLabel(activity.end, true))}</p><p class="insight-value sensitive">${money(decimalString(pension || earned !== 0n ? earned : change), account.currency)}</p><p class="subtle">${I18n.translate(title)}</p><details class="disclosure"><summary>${I18n.translate('Ver desglose')}</summary>${line(I18n.translate('Saldo inicial'), money(activity.opening, account.currency))}${fields.filter(([key]) => activity[key] != null && decimal(activity[key]) !== 0n).map(([key, label]) => line(I18n.translate(label), money(activity[key], account.currency))).join('')}${line(I18n.translate('Saldo final'), money(activity.closing, account.currency))}${line(I18n.translate('Cambio de saldo'), money(decimalString(change), account.currency))}<p class="subtle">${I18n.translate(pension ? 'Importes del periodo completo, no una rentabilidad mensual.' : 'Entradas y salidas incluyen transferencias. Los pagos a tarjetas no detallan las compras.')}</p></details></section>`;
+}
+
+let perspectiveView = 'balance';
+let projectionYears = 10;
+const projectionRates = new Map();
+const projectionContributions = new Map();
+let projectionUseGeneralRate = false;
+let projectionGeneralRate = '0';
+let projectionVariation = '0';
+let projectionSelectedYear = null;
+let projectionChartModel = null;
+function perspectiveModel() {
+  const total = selectedTotal();
+  if (total.gross == null) return null;
+  const groups = new Map();
+  const entities = new Map();
+  let bitcoin = 0n;
+  let stocks = 0n;
+  let colones = 0n;
+  const add = (map, key, value) => map.set(key, (map.get(key) || 0n) + value);
+  for (const item of total.items) {
+    const value = decimal(item.usd_value);
+    const account = snapshot.accounts.find(account => account.id === item.id);
+    let group = item.availability === 'available' ? 'Cuentas disponibles' : item.availability === 'restricted' ? 'Fondos restringidos' : item.availability === 'conditional' ? 'Disponibilidad condicionada' : 'Otros saldos';
+    if (item.kind === 'projection') group = 'Proyecciones de planilla';
+    if (item.currency === 'CRC') colones += value;
+    if (item.source === 'binance') {
+      group = 'Criptoactivos';
+      bitcoin += (account?.positions || []).filter(position => position.symbol === 'BTC').reduce((sum, position) => sum + decimal(position.market_value), 0n);
+    }
+    if (item.source === 'ibkr') {
+      const cash = decimal(account?.components?.cash || '0');
+      add(groups, 'Efectivo en IBKR', cash);
+      add(groups, 'Posiciones y devengados', value - cash);
+      stocks += (account?.positions || []).filter(position => position.currency === 'USD').reduce((sum, position) => sum + decimal(position.market_value), 0n);
+    } else add(groups, group, value);
+    add(entities, entity(item.source).name, value);
+  }
+  colones -= decimal(snapshot.deductions_by_currency?.CRC || '0') * 10n ** 20n / decimal(total.fx.crc_per_usd);
+  const positive = [...entities.values()].reduce((sum, value) => sum + (value > 0n ? value : 0n), 0n);
+  return {total, groups, entities: [...entities].sort((left, right) => left[1] === right[1] ? 0 : left[1] > right[1] ? -1 : 1), positive, bitcoin, stocks, colones};
+}
+function projectionAssets(model) {
+  const assets = [];
+  let remaining = decimal(model.total.deductions || '0');
+  const distribute = (rows, deduction) => {
+    let positive = rows.reduce((sum, row) => sum + (row.amount > 0n ? row.amount : 0n), 0n);
+    let rest = deduction > positive ? positive : deduction;
+    const used = rest;
+    for (const row of rows) {
+      if (row.amount <= 0n) continue;
+      const share = rest * row.amount / positive;
+      positive -= row.amount;
+      row.amount -= share;
+      rest -= share;
+    }
+    return used;
+  };
+  for (const item of model.total.items) {
+    const account = snapshot.accounts.find(account => account.id === item.id);
+    const value = decimal(item.usd_value);
+    const rows = [];
+    if (account && ['ibkr', 'binance'].includes(item.source)) {
+      for (const position of account.positions || []) {
+        const key = `${item.id}:${position.symbol}`;
+        const amount = position.currency === 'CRC' ? decimal(position.market_value) * 10n ** 20n / decimal(model.total.fx.crc_per_usd) : decimal(position.market_value);
+        const existing = rows.find(row => row.key === key);
+        if (existing) existing.amount += amount;
+        else rows.push({key, label: position.symbol, source: entity(item.source).name, amount});
+      }
+    }
+    const residual = value - rows.reduce((sum, row) => sum + row.amount, 0n);
+    if (residual !== 0n || !rows.length) rows.push({key: item.id, label: rows.length ? 'Efectivo y devengados' : account ? accountTitle(account) : selectionNames[item.key] || entity(item.source).name, source: entity(item.source).name, amount: residual});
+    const rawDeduction = decimal(snapshot.deductions_by_account?.[item.id] || '0');
+    const deduction = item.currency === 'CRC' ? rawDeduction * 10n ** 20n / decimal(model.total.fx.crc_per_usd) : rawDeduction;
+    remaining -= distribute(rows, deduction < remaining ? deduction : remaining);
+    assets.push(...rows);
+  }
+  remaining -= distribute(assets, remaining);
+  if (remaining > 0n) assets.push({key: 'uncovered-deductions', label: 'Restas sin saldo', source: 'Dinero excluido', amount: -remaining, fixed: true});
+  return assets;
+}
+function monthlyContributionFactor(annualFactor) {
+  const scale = 10n ** 20n;
+  const target = annualFactor * scale ** 11n;
+  let lower = 0n;
+  let upper = annualFactor > scale ? annualFactor : scale;
+  while (upper - lower > 1n) {
+    const middle = (lower + upper) / 2n;
+    if (middle ** 12n <= target) lower = middle;
+    else upper = middle;
+  }
+  const monthlyFactor = upper ** 12n === target ? upper : lower;
+  let accumulated = 0n;
+  for (let month = 0; month < 12; month++) accumulated = accumulated * monthlyFactor / scale + scale;
+  return accumulated;
+}
+function compoundProjection(assets, years, rates = projectionRates, contributions = projectionContributions, variation = '0') {
+  const scale = 10n ** 20n;
+  const balances = assets.map(asset => asset.amount);
+  const points = [balances.reduce((sum, value) => sum + value, 0n)];
+  const factors = new Map();
+  const terms = assets.map(asset => {
+    const rawRate = asset.fixed ? 0n : decimal(rates.get(asset.key) || '0') + decimal(variation);
+    const rate = rawRate < -100n * scale ? -100n * scale : rawRate;
+    const annualFactor = scale + rate / 100n;
+    const contribution = asset.fixed ? 0n : decimal(contributions.get(asset.key) || '0');
+    if (contribution && !factors.has(annualFactor)) factors.set(annualFactor, monthlyContributionFactor(annualFactor));
+    return {annualFactor, annualContribution: contribution ? contribution * factors.get(annualFactor) / scale : 0n};
+  });
+  for (let year = 1; year <= years; year++) {
+    assets.forEach((asset, index) => {
+      balances[index] = balances[index] * terms[index].annualFactor / scale + terms[index].annualContribution;
+    });
+    points.push(balances.reduce((sum, value) => sum + value, 0n));
+  }
+  return points;
+}
+function projectionScenarios(assets) {
+  const rates = projectionUseGeneralRate ? new Map(assets.map(asset => [asset.key, projectionGeneralRate])) : projectionRates;
+  const monthly = assets.reduce((sum, asset) => sum + (asset.fixed ? 0n : decimal(projectionContributions.get(asset.key) || '0')), 0n);
+  const central = compoundProjection(assets, projectionYears, rates);
+  return {
+    central,
+    lower: compoundProjection(assets, projectionYears, rates, projectionContributions, decimalString(-decimal(projectionVariation))),
+    upper: compoundProjection(assets, projectionYears, rates, projectionContributions, projectionVariation),
+    principal: central.map((value, year) => central[0] + monthly * 12n * BigInt(year)),
+    monthly,
+  };
+}
+function drawProjection(scenarios) {
+  const points = scenarios.central;
+  const chart = select('#projection-chart');
+  if (!chart) return;
+  const width = chart.clientWidth;
+  const height = 224;
+  const scale = Math.min(devicePixelRatio || 1, 3);
+  chart.width = Math.round(width * scale);
+  chart.height = Math.round(height * scale);
+  const context = chart.getContext('2d');
+  if (hiddenAmounts || !width) return;
+  context.scale(scale, scale);
+  const style = getComputedStyle(chart);
+  const values = points.map(value => Number(value) / 1e20);
+  const lower = scenarios.lower.map(value => Number(value) / 1e20);
+  const upper = scenarios.upper.map(value => Number(value) / 1e20);
+  const principal = scenarios.principal.map(value => Number(value) / 1e20);
+  const low = Math.min(0, ...values, ...lower, ...upper, ...principal);
+  const high = Math.max(0, ...values, ...lower, ...upper, ...principal);
+  const span = high - low || 1;
+  const left = 56;
+  const right = width - 12;
+  const top = 14;
+  const bottom = height - 30;
+  const vertical = value => bottom - (value - low) / span * (bottom - top);
+  const horizontal = index => left + index / (values.length - 1) * (right - left);
+  const compact = new Intl.NumberFormat('en-US', {notation: 'compact', maximumFractionDigits: 1});
+  context.font = `11px ${style.getPropertyValue('--font')}`;
+  context.textBaseline = 'middle';
+  context.textAlign = 'right';
+  context.fillStyle = style.getPropertyValue('--label-2');
+  context.strokeStyle = style.getPropertyValue('--sep');
+  context.lineWidth = 1;
+  for (let tick = 0; tick <= 3; tick++) {
+    const value = low + span * tick / 3;
+    const heightAtTick = vertical(value);
+    context.fillText(`$${compact.format(value)}`, left - 8, heightAtTick);
+    context.beginPath(); context.moveTo(left, heightAtTick); context.lineTo(right, heightAtTick); context.stroke();
+  }
+  context.fillStyle = style.getPropertyValue('--label-3');
+  context.globalAlpha = .3;
+  context.beginPath(); context.moveTo(left, vertical(0));
+  principal.forEach((value, index) => context.lineTo(horizontal(index), vertical(value)));
+  context.lineTo(right, vertical(0)); context.closePath(); context.fill();
+  context.globalAlpha = 1;
+  context.fillStyle = style.getPropertyValue('--projection-band');
+  context.globalAlpha = .18;
+  context.beginPath();
+  upper.forEach((value, index) => index ? context.lineTo(horizontal(index), vertical(value)) : context.moveTo(horizontal(index), vertical(value)));
+  for (let index = lower.length - 1; index >= 0; index--) context.lineTo(horizontal(index), vertical(lower[index]));
+  context.closePath(); context.fill(); context.globalAlpha = 1;
+  for (let index = 0; index < values.length - 1; index++) {
+    const start = values[index] - principal[index];
+    const end = values[index + 1] - principal[index + 1];
+    const fill = (from, to, initial, final, baseStart, baseEnd, positive) => {
+      context.fillStyle = style.getPropertyValue(positive ? '--tint' : '--down');
+      context.globalAlpha = .1;
+      context.beginPath();
+      context.moveTo(from, vertical(baseStart));
+      context.lineTo(from, vertical(initial));
+      context.lineTo(to, vertical(final));
+      context.lineTo(to, vertical(baseEnd));
+      context.closePath(); context.fill();
+      context.globalAlpha = 1;
+    };
+    if (start * end < 0) {
+      const fraction = -start / (end - start);
+      const cross = horizontal(index) + (horizontal(index + 1) - horizontal(index)) * fraction;
+      const base = principal[index] + (principal[index + 1] - principal[index]) * fraction;
+      fill(horizontal(index), cross, values[index], base, principal[index], base, start > 0);
+      fill(cross, horizontal(index + 1), base, values[index + 1], base, principal[index + 1], end > 0);
+    } else fill(horizontal(index), horizontal(index + 1), values[index], values[index + 1], principal[index], principal[index + 1], (start || end) >= 0);
+  }
+  context.strokeStyle = style.getPropertyValue('--label-2');
+  context.setLineDash([3, 4]);
+  context.beginPath();
+  principal.forEach((value, index) => index ? context.lineTo(horizontal(index), vertical(value)) : context.moveTo(horizontal(index), vertical(value)));
+  context.stroke();
+  context.strokeStyle = style.getPropertyValue('--projection-band');
+  for (const series of [lower, upper]) {
+    context.beginPath();
+    series.forEach((value, index) => index ? context.lineTo(horizontal(index), vertical(value)) : context.moveTo(horizontal(index), vertical(value)));
+    context.stroke();
+  }
+  context.setLineDash([]);
+  context.strokeStyle = style.getPropertyValue(values.at(-1) < principal.at(-1) ? '--down' : '--tint');
+  context.lineWidth = 2.5;
+  context.lineCap = 'round'; context.lineJoin = 'round';
+  context.beginPath();
+  values.forEach((value, index) => {
+    if (index === 0) context.moveTo(horizontal(index), vertical(value));
+    else context.lineTo(horizontal(index), vertical(value));
+  });
+  context.stroke();
+  if (projectionSelectedYear != null) {
+    context.strokeStyle = style.getPropertyValue('--label-2');
+    context.lineWidth = 1;
+    context.beginPath(); context.moveTo(horizontal(projectionSelectedYear), top); context.lineTo(horizontal(projectionSelectedYear), bottom); context.stroke();
+    context.fillStyle = style.getPropertyValue('--label');
+    context.fillRect(horizontal(projectionSelectedYear) - 3, vertical(values[projectionSelectedYear]) - 3, 6, 6);
+  }
+  context.fillStyle = style.getPropertyValue('--label-2');
+  context.textBaseline = 'bottom';
+  const ticks = [...new Set([0, Math.floor((values.length - 1) / 2), values.length - 1])];
+  for (const year of ticks) {
+    context.textAlign = year === 0 ? 'left' : year === values.length - 1 ? 'right' : 'center';
+    context.fillText(year === 0 ? I18n.translate('Hoy') : `${I18n.translate('A\u00f1o')} ${year}`, horizontal(year), height - 3);
+  }
+}
+function updateProjectionReadout() {
+  const model = projectionChartModel;
+  if (!model || !select('#projection-chart')) return;
+  const year = projectionSelectedYear ?? projectionYears;
+  const growth = model.central[year] - model.principal[year];
+  select('#scenario-result').innerHTML = money(decimalString(model.central[year]), 'USD');
+  select('#projection-gain').innerHTML = money(decimalString(growth), 'USD');
+  select('#projection-deposited').innerHTML = money(decimalString(model.monthly * 12n * BigInt(year)), 'USD');
+  select('#projection-lower').innerHTML = money(decimalString(model.lower[year]), 'USD');
+  select('#projection-upper').innerHTML = money(decimalString(model.upper[year]), 'USD');
+  select('#projection-end').textContent = `${I18n.translate('A\u00f1o')} ${year}`;
+  const chart = select('#projection-chart');
+  chart.setAttribute('aria-valuenow', String(year));
+  chart.setAttribute('aria-valuemax', String(projectionYears));
+  chart.setAttribute('aria-valuetext', hiddenAmounts ? I18n.translate('Importes ocultos') : `${I18n.translate('A\u00f1o')} ${year}: ${money(decimalString(model.central[year]), 'USD')}`);
+  drawProjection(model);
+}
+function bindProjectionChart() {
+  const chart = select('#projection-chart');
+  let keyboardInteraction = false;
+  const choose = event => {
+    if (hiddenAmounts || !projectionChartModel || event.isPrimary === false) return;
+    const bounds = chart.getBoundingClientRect();
+    const horizontal = (event.clientX - bounds.left) * chart.clientWidth / bounds.width;
+    projectionSelectedYear = Math.max(0, Math.min(projectionYears, Math.round((horizontal - 56) / (chart.clientWidth - 68) * projectionYears)));
+    updateProjectionReadout();
+  };
+  chart.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || hiddenAmounts) return;
+    keyboardInteraction = false;
+    chart.setPointerCapture(event.pointerId);
+    choose(event);
+  });
+  chart.addEventListener('pointermove', event => {
+    if (keyboardInteraction) return;
+    if (event.pointerType === 'mouse' || chart.hasPointerCapture(event.pointerId)) choose(event);
+  });
+  chart.addEventListener('pointerup', event => { if (chart.hasPointerCapture(event.pointerId)) chart.releasePointerCapture(event.pointerId); });
+  chart.addEventListener('keydown', event => {
+    if (hiddenAmounts || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    keyboardInteraction = true;
+    const year = projectionSelectedYear ?? projectionYears;
+    projectionSelectedYear = event.key === 'Home' ? 0 : event.key === 'End' ? projectionYears : Math.max(0, Math.min(projectionYears, year + (event.key === 'ArrowRight' ? 1 : -1)));
+    updateProjectionReadout();
+  });
+}
+function renderScenario() {
+  const model = perspectiveModel();
+  if (!model || !select('#scenario-result')) return;
+  const invalid = all('.projection-input:not(:disabled)').some(input => !input.validity.valid || input.value === '');
+  select('#projection-error').hidden = !invalid;
+  select('#projection-result').hidden = invalid;
+  select('#projection-schedule').hidden = invalid;
+  if (invalid) { projectionChartModel = null; return; }
+  const assets = projectionAssets(model);
+  projectionChartModel = projectionScenarios(assets);
+  const points = projectionChartModel.central;
+  if (projectionSelectedYear != null) projectionSelectedYear = Math.min(projectionSelectedYear, projectionYears);
+  select('#projection-start').innerHTML = money(decimalString(points[0]), 'USD');
+  select('#projection-growth-legend').classList.toggle('is-loss', !hiddenAmounts && points.at(-1) < projectionChartModel.principal.at(-1));
+  select('#projection-table').innerHTML = `<table><thead><tr><th scope="col">${I18n.translate('A\u00f1o')}</th><th scope="col">${I18n.translate('Crecimiento anual')}</th><th scope="col">${I18n.translate('Patrimonio')}</th></tr></thead><tbody>${points.map((value, year) => `<tr><th scope="row">${year}</th><td class="sensitive">${money(decimalString(year ? value - points[year - 1] - projectionChartModel.monthly * 12n : 0n), 'USD')}</td><td class="sensitive">${money(decimalString(value), 'USD')}</td></tr>`).join('')}</tbody></table>`;
+  const rates = assets.filter(asset => !asset.fixed).map(asset => Number(projectionUseGeneralRate ? projectionGeneralRate : projectionRates.get(asset.key) || '0'));
+  const lowest = rates.length ? Math.min(...rates) : 0;
+  const highest = rates.length ? Math.max(...rates) : 0;
+  const rateLabel = value => new Intl.NumberFormat(I18n.locale, {maximumFractionDigits: 2}).format(value) + '%';
+  select('#projection-rate-summary').textContent = lowest === highest ? rateLabel(lowest) : `${rateLabel(lowest)} \u2013 ${rateLabel(highest)}`;
+  select('#projection-monthly-total').innerHTML = money(decimalString(projectionChartModel.monthly), 'USD');
+  select('#projection-band-label').textContent = `\u00b1${rateLabel(Number(projectionVariation)).replace('%', '')} pp`;
+  select('#projection-lower-label').textContent = `\u2212${rateLabel(Number(projectionVariation)).replace('%', '')} pp`;
+  select('#projection-upper-label').textContent = `+${rateLabel(Number(projectionVariation)).replace('%', '')} pp`;
+  select('#projection-band-key').hidden = decimal(projectionVariation) === 0n;
+  select('#projection-range-values').hidden = decimal(projectionVariation) === 0n;
+  select('#projection-capital-label').textContent = I18n.translate('Capital y aportes');
+  select('#projection-chart').setAttribute('aria-label', I18n.translate(hiddenAmounts ? 'Importes ocultos' : 'Proyecci\u00f3n del patrimonio'));
+  updateProjectionReadout();
+}
+const projectionResize = new ResizeObserver(() => { if (select('#projection-chart')) renderScenario(); });
+function renderPerspective() {
+  const container = select('#detail-content');
+  const model = perspectiveModel();
+  projectionResize.disconnect();
+  select('#detail-eyebrow').textContent = I18n.translate('Todo USD').toUpperCase();
+  const tabs = [['balance', 'Disponible'], ['sources', 'Distribuci\u00f3n'], ['scenario', 'Proyectar']];
+  if (!select('#perspective-body')) {
+    container.innerHTML = `<h2 id="detail-title">${I18n.translate('Mi patrimonio')}</h2><div class="segmented perspective-tabs" role="group" aria-label="${I18n.translate('Perspectiva')}">${tabs.map(([key, label]) => `<button type="button" data-perspective="${key}" aria-pressed="${key === perspectiveView}">${I18n.translate(label)}</button>`).join('')}</div><div id="perspective-body" class="perspective-body"></div>`;
+    all('[data-perspective]').forEach(button => button.addEventListener('click', () => {
+      perspectiveView = button.dataset.perspective;
+      renderPerspective();
+    }));
+  }
+  all('[data-perspective]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.perspective === perspectiveView)));
+  const body = select('#perspective-body');
+  select('.perspective-tabs').style.setProperty('--index', String(tabs.findIndex(([key]) => key === perspectiveView)));
+  body.scrollTop = 0;
+  if (!model) body.innerHTML = `<p class="coverage-text">${I18n.translate('Hace falta una referencia de cambio para reunir las monedas.')}</p>`;
+  else if (perspectiveView === 'balance') {
+    body.innerHTML = [...model.groups].filter(([, value]) => value !== 0n).map(([label, value]) => line(I18n.translate(label), money(decimalString(value), 'USD'))).join('') + (decimal(model.total.deductions || '0') !== 0n ? line(I18n.translate('Dinero excluido'), money(model.total.deductions, 'USD')) : '') + `<p class="subtle perspective-note">${I18n.translate('Antes de restas. Efectivo en IBKR no equivale a efectivo retirable; Earn y pensiones conservan sus condiciones.')}</p>`;
+  } else if (perspectiveView === 'sources') {
+    body.innerHTML = model.entities.filter(([, value]) => value !== 0n).map(([name, value]) => {
+      const share = model.positive > 0n && value > 0n ? `${(Number(value * 1000n / model.positive) / 10).toFixed(1)}%` : '\u2014';
+      return line(name, `${hiddenAmounts ? '\u2022\u2022\u2022\u2022' : share}<small class="position-name">${money(decimalString(value), 'USD')}</small>`);
+    }).join('') + `<p class="subtle perspective-note">${I18n.translate('Peso sobre saldos positivos, antes de restas. Una fuente no equivale a un riesgo ni revela los activos internos de un fondo.')}</p>`;
+  } else {
+    const assets = projectionAssets(model);
+    body.innerHTML = `
+      <div class="projection-horizon"><label for="projection-years">${I18n.translate('Plazo en a\u00f1os')}</label><input id="projection-years" class="projection-input" type="number" inputmode="numeric" min="1" max="50" step="1" required value="${projectionYears}"></div>
+      <input id="projection-horizon" class="projection-slider" type="range" min="1" max="50" step="1" value="${projectionYears}" aria-label="${I18n.translate('Plazo en a\u00f1os')}">
+      <p id="projection-error" class="form-error" role="status" hidden>${I18n.translate('Revisa los supuestos: 1-50 a\u00f1os; tasas -100 a 100%; variaci\u00f3n 0-100 puntos; aportes 0-1,000,000 USD/mes. Hasta dos decimales.')}</p>
+      <div id="projection-result"><div class="projection-headline"><div class="projection-caption"><span>${I18n.translate('Proyecci\u00f3n base')}</span><span id="projection-end"></span></div><p id="scenario-result" class="projection-total sensitive" aria-live="polite"></p></div>
+        <canvas id="projection-chart" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="${projectionYears}" aria-valuenow="${projectionYears}" aria-describedby="projection-legend"></canvas>
+        <div id="projection-legend" class="projection-legend"><span id="projection-capital-label" class="projection-capital-key">${I18n.translate('Capital y aportes')}</span><span id="projection-growth-legend" class="projection-growth-key">${I18n.translate('Crecimiento')}</span><span id="projection-band-key" class="projection-band-key"><span id="projection-band-label"></span></span></div>
+        <div id="projection-range-values" class="projection-range-values"><div><span id="projection-lower-label" class="small-label"></span><strong id="projection-lower" class="sensitive"></strong></div><div><span id="projection-upper-label" class="small-label"></span><strong id="projection-upper" class="sensitive"></strong></div></div>
+        <div class="projection-stats"><div><span class="small-label">${I18n.translate('Inicial')}</span><strong id="projection-start" class="sensitive"></strong></div><div><span class="small-label">${I18n.translate('Aportado')}</span><strong id="projection-deposited" class="sensitive"></strong></div><div><span class="small-label">${I18n.translate('Crecimiento')}</span><strong id="projection-gain" class="sensitive"></strong></div></div>
+      </div>
+      <details id="projection-rates" class="disclosure projection-disclosure"><summary>${I18n.translate('Tasas anuales')}<span id="projection-rate-summary" class="small-label"></span></summary>
+        <label class="setting-row"><span class="setting-label">${I18n.translate('Una tasa para todos')}</span><input id="projection-rate-mode" class="switch" type="checkbox" role="switch" ${projectionUseGeneralRate ? 'checked' : ''}></label>
+        <label id="projection-general-row" class="projection-horizon" ${projectionUseGeneralRate ? '' : 'hidden'}><span>${I18n.translate('Tasa general')}</span><span class="projection-rate"><input id="projection-general" class="projection-input" type="number" inputmode="decimal" min="-100" max="100" step="0.01" required value="${projectionGeneralRate}" ${projectionUseGeneralRate ? '' : 'disabled'}><span>%</span></span></label>
+        <label class="projection-horizon"><span>${I18n.translate('Variaci\u00f3n global')} \u00b1</span><span class="projection-rate"><input id="projection-variation" class="projection-input" type="number" inputmode="decimal" min="0" max="100" step="0.01" required value="${projectionVariation}"><span>pp</span></span></label>
+        <div id="projection-individual-rates" class="projection-assets" ${projectionUseGeneralRate ? 'hidden' : ''}>${assets.map((asset, index) => `<label class="projection-row" for="projection-rate-${index}"><span class="projection-asset"><strong>${escapeHTML(I18n.translate(asset.label))}</strong><small>${escapeHTML(I18n.translate(asset.source))}<span class="sensitive">${money(decimalString(asset.amount), 'USD')}</span></small></span><span class="projection-rate"><input id="projection-rate-${index}" class="projection-input" data-projection-rate="${escapeHTML(asset.key)}" data-fixed="${Boolean(asset.fixed)}" type="number" inputmode="decimal" min="-100" max="100" step="0.01" required value="${escapeHTML(projectionRates.get(asset.key) || '0')}" ${asset.fixed || projectionUseGeneralRate ? 'disabled' : ''} aria-label="${escapeHTML(I18n.translate('Tasa anual') + ': ' + I18n.translate(asset.label) + ' (' + I18n.translate(asset.source) + ')')}"><span aria-hidden="true">%</span></span></label>`).join('')}</div></details>
+      <details id="projection-contributions" class="disclosure projection-disclosure"><summary>${I18n.translate('Aportes mensuales')}<span id="projection-monthly-total" class="small-label sensitive"></span></summary><p class="subtle">USD / ${I18n.translate('mes')}</p><div class="projection-assets">${assets.filter(asset => !asset.fixed).map((asset, index) => `<label class="projection-row" for="projection-contribution-${index}"><span class="projection-asset"><strong>${escapeHTML(I18n.translate(asset.label))}</strong><small>${escapeHTML(I18n.translate(asset.source))}</small></span><input id="projection-contribution-${index}" class="projection-input projection-contribution" data-projection-contribution="${escapeHTML(asset.key)}" type="number" inputmode="decimal" min="0" max="1000000" step="0.01" required value="${hiddenAmounts ? '' : escapeHTML(projectionContributions.get(asset.key) || '0')}" ${hiddenAmounts ? 'disabled' : ''} aria-label="${escapeHTML(I18n.translate('Aporte mensual USD') + ': ' + I18n.translate(asset.label) + ' (' + I18n.translate(asset.source) + ')')}"></label>`).join('')}</div></details>
+      <details id="projection-schedule" class="disclosure projection-disclosure"><summary>${I18n.translate('Evoluci\u00f3n anual')}</summary><div id="projection-table"></div></details>
+      <details class="disclosure projection-assumptions"><summary>${I18n.translate('Supuestos')}</summary><p class="subtle">${I18n.translate('Tasas efectivas anuales constantes. Aportes en USD al final de cada mes, con tasa mensual equivalente. Cambio constante; sin impuestos, comisiones ni inflaci\u00f3n adicionales.')}</p><p class="subtle">${I18n.translate('La variaci\u00f3n suma y resta puntos porcentuales a cada tasa: 10% \u00b1 3 pp representa 7%, 10% y 13%. M\u00ednimo -100%. Son escenarios, no probabilidades ni pron\u00f3sticos.')}</p><p class="subtle">${I18n.translate('Restas de cuenta repartidas entre sus activos; las restantes, entre los saldos positivos seleccionados. Tasas y aportes son supuestos temporales, sin modificar tus cuentas.')}</p></details>`;
+    select('#projection-years').addEventListener('input', event => {
+      if (event.target.validity.valid && event.target.value !== '') {
+        projectionYears = Number(event.target.value);
+        select('#projection-horizon').value = String(projectionYears);
+      }
+      projectionSelectedYear = null;
+      renderScenario();
+    });
+    select('#projection-horizon').addEventListener('input', event => {
+      projectionYears = Number(event.target.value);
+      select('#projection-years').value = String(projectionYears);
+      projectionSelectedYear = null;
+      renderScenario();
+    });
+    select('#projection-rate-mode').addEventListener('change', event => {
+      projectionUseGeneralRate = event.target.checked;
+      select('#projection-general-row').hidden = !projectionUseGeneralRate;
+      select('#projection-general').disabled = !projectionUseGeneralRate;
+      select('#projection-individual-rates').hidden = projectionUseGeneralRate;
+      all('[data-projection-rate]').forEach(input => { input.disabled = projectionUseGeneralRate || input.dataset.fixed === 'true'; });
+      projectionSelectedYear = null;
+      renderScenario();
+    });
+    for (const id of ['projection-general', 'projection-variation']) {
+      select(`#${id}`).addEventListener('input', event => {
+        if (event.target.validity.valid && event.target.value !== '') {
+          if (id === 'projection-general') projectionGeneralRate = Number(event.target.value).toFixed(2);
+          else projectionVariation = Number(event.target.value).toFixed(2);
+        }
+        projectionSelectedYear = null;
+        renderScenario();
+      });
+    }
+    all('[data-projection-rate]').forEach(input => input.addEventListener('input', () => {
+      if (input.validity.valid && input.value !== '') projectionRates.set(input.dataset.projectionRate, Number(input.value).toFixed(2));
+      projectionSelectedYear = null;
+      renderScenario();
+    }));
+    all('[data-projection-contribution]').forEach(input => input.addEventListener('input', () => {
+      if (input.validity.valid && input.value !== '') projectionContributions.set(input.dataset.projectionContribution, Number(input.value).toFixed(2));
+      projectionSelectedYear = null;
+      renderScenario();
+    }));
+    projectionSelectedYear = null;
+    bindProjectionChart();
+    renderScenario();
+    icons();
+    projectionResize.observe(select('#projection-chart'));
+  }
+  if (model?.total.fx?.state === 'stale') body.insertAdjacentHTML('beforeend', `<p class="subtle perspective-note">${I18n.translate('Referencia de cambio desactualizada.')}</p>`);
+  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) body.animate([{opacity: .5}, {opacity: 1}], {duration: 180, easing: 'ease-out'});
+}
 function renderPayroll() {
   const payroll = snapshot.payroll;
   select('#payroll-section').hidden = !payroll?.configured;
@@ -725,7 +1155,9 @@ async function saveAdjustment(change) {
 }
 function renderDetail(detail) {
   const container = select('#detail-content');
-  if (detail.kind === 'planning') {
+  if (detail.kind === 'perspective') {
+    renderPerspective();
+  } else if (detail.kind === 'planning') {
     DexPlan.form(detail.id);
   } else if (detail.kind === 'composition') {
     renderComposition();
@@ -774,6 +1206,8 @@ function renderDetail(detail) {
     select('.sheet-title').innerHTML = accountFace(account, true);
     select('#detail-content>.small-label').textContent = 'Saldo del informe';
     select('#detail-content>.subtle').textContent = 'Informe del ' + dateLabel(account.as_of, true);
+    const activity = periodMarkup(account);
+    if (activity) select('#detail-content>.subtle').insertAdjacentHTML('afterend', activity);
     if (account.source === 'binance') {
       select('#detail-content>.small-label').textContent = I18n.translate('Valor USD');
       select('#detail-content>.subtle').textContent = `${I18n.translate('Captura')} ${dateLabel(account.as_of, true)}`;
@@ -983,6 +1417,7 @@ document.addEventListener('click', event => {
   else if (connection) openDetail('connection', connection.dataset.connection);
 });
 select('#coverage-open').addEventListener('click', () => openDetail('coverage'));
+select('#perspective-open').addEventListener('click', () => openDetail('perspective'));
 select('#allocation-toggle').addEventListener('click', () => {
   allocationExpanded = !allocationExpanded;
   renderDistribution(allocationAccounts);
@@ -1002,7 +1437,11 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape' && select('#detail').open) { event.preventDefault(); closeDetail(); }
 });
 select('#detail').addEventListener('click', event => { const bounds = event.currentTarget.getBoundingClientRect(); if (event.target === event.currentTarget && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) closeDetail(); });
-select('#detail').addEventListener('close', () => { currentDetail = null; document.body.classList.remove('modal-open'); });
+select('#detail').addEventListener('close', () => {
+  if (select('#detail').open) return;
+  currentDetail = null;
+  document.body.classList.remove('modal-open');
+});
 select('#detail').addEventListener('cancel', event => { event.preventDefault(); closeDetail(); });
 select('#motion-setting').checked = preference('motion', 'false') === 'true';
 document.body.classList.toggle('reduce-motion', select('#motion-setting').checked);
