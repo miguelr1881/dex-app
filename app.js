@@ -155,8 +155,16 @@ async function loadMarket() {
 }
 function renderAutomation() {
   if (Portal.enabled) {
-    select('#automation-state').textContent = I18n.translate('Actualizacion diaria alojada');
-    select('#automation-jobs').replaceChildren();
+    const text = (spanish, english) => I18n.language === 'en' ? english : spanish;
+    const format = value => Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat(I18n.locale, {dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Costa_Rica'}).format(new Date(value)) : text('No disponible', 'Unavailable');
+    const stale = value => !Number.isFinite(Date.parse(value)) || Date.now() - Date.parse(value) > 36 * 3600000 || Date.parse(value) - Date.now() > 300000;
+    const crypto = snapshot?.crypto || {};
+    const publication = snapshot?.published_at;
+    const statements = snapshot?.expenses?.statements || [];
+    const latest = statements.map(statement => statement.end).sort().at(-1);
+    const withheld = snapshot?.expenses?.withheld_months || [];
+    select('#automation-state').textContent = text('Diario, 06:23 Costa Rica. La publicaci\u00f3n recibida no confirma el resultado de intentos posteriores.', 'Daily, 06:23 Costa Rica. The received publication does not confirm the outcome of later attempts.');
+    select('#automation-jobs').innerHTML = `<div class="sync-summary">${line(text('Publicaci\u00f3n recibida', 'Received publication'), escapeHTML(format(publication)))}${stale(publication) ? `<p class="subtle">${text('Sin publicaci\u00f3n reciente', 'No recent publication')}</p>` : ''}${line(text('Captura Binance', 'Binance capture'), escapeHTML(format(crypto.captured_at)))}${stale(crypto.captured_at) ? `<p class="subtle">${text('Sin captura reciente de Binance', 'No recent Binance capture')}</p>` : ''}${line(text('Valoraci\u00f3n cripto', 'Crypto valuation'), escapeHTML(format(crypto.priced_at)))}${line(text('\u00daltimo corte recibido', 'Latest received statement'), latest ? escapeHTML(dateLabel(latest, true)) : text('Pendiente', 'Pending'))}${withheld.length ? line(text('Meses pendientes de cobertura', 'Months awaiting coverage'), withheld.map(key => escapeHTML(new Intl.DateTimeFormat(I18n.locale, {month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(key + '-01T12:00:00Z')))).join(', ')) : ''}<a class="text-action" href="https://github.com/miguelr1881/dex/actions/workflows/pipeline.yml" target="_blank" rel="noopener noreferrer">${text('Ver ejecuciones', 'View workflow runs')}</a></div>`;
     return;
   }
   const jobs = automationStatus?.jobs || {};

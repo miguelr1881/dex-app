@@ -10,6 +10,7 @@ const DexExpenses = (() => {
   let entranceAnimations = [];
   let selection = null;
   let selectedCards = [];
+  let cardsInitialized = false;
   let renderKey = '';
   const labels = {
     food: ['Comidas y caf\u00e9', 'Food & coffee', 'utensils', '#da8b66'],
@@ -78,7 +79,7 @@ const DexExpenses = (() => {
     const product = cardProduct(card);
     const selected = selectedCards.includes(card.id);
     const label = (product?.name || card.issuer || text('Tarjeta', 'Card')) + ' ' + cardName(card, index);
-    return `<button type="button" class="expense-card" data-expense-card="${escapeHTML(card.id)}" aria-pressed="${selected}" aria-disabled="${selectedCards.length === 1 && selected}" aria-label="${escapeHTML(label)}" title="${escapeHTML(label)}"><span class="expense-card-surface">${product ? `<img class="expense-card-art" src="./${product.image}" width="557" height="352" alt="" draggable="false">` : `<span class="expense-card-fallback"><img src="./brand-bac.svg" width="24" height="24" alt="BAC"></span>`}</span><span class="expense-card-label"><strong data-no-translate>${escapeHTML(product?.short || card.issuer || text('Tarjeta', 'Card'))}</strong><small data-no-translate>${escapeHTML(cardName(card, index))}</small></span><strong class="sensitive">${amount(sum(rowsFor(value, card.id)))}</strong><span class="expense-card-check" aria-hidden="true">${icon('check')}</span></button>`;
+    return `<button type="button" class="expense-card" data-expense-card="${escapeHTML(card.id)}" aria-pressed="${selected}" aria-label="${escapeHTML(label)}" title="${escapeHTML(label)}"><span class="expense-card-surface">${product ? `<img class="expense-card-art" src="./${product.image}" width="557" height="352" alt="" draggable="false">` : `<span class="expense-card-fallback"><img src="./brand-bac.svg" width="24" height="24" alt="BAC"></span>`}</span><span class="expense-card-label"><strong data-no-translate>${escapeHTML(product?.short || card.issuer || text('Tarjeta', 'Card'))}</strong><small data-no-translate>${escapeHTML(cardName(card, index))}</small></span><strong class="sensitive">${amount(sum(rowsFor(value, card.id)))}</strong></button>`;
   }
   function cardName(card, index = 0) {
     return card?.last4 ? '\u2022\u2022 ' + card.last4 : text('Tarjeta ', 'Card ') + (index + 1);
@@ -87,7 +88,7 @@ const DexExpenses = (() => {
     return value.transactions.filter(row => (card ? row.card_id === card : selectedCards.includes(row.card_id)) && row.date.startsWith(month) && row.currency === denomination && ['purchase', 'tax', 'fee', 'refund'].includes(row.kind));
   }
   function reviewMarkup(value) {
-    const insights = (value.insights || []).filter(item => item.date.startsWith(month) && item.currency === denomination && selectedCards.includes(item.card_id));
+    const insights = (value.insights || []).filter(item => item.kind !== 'recurring_payment' && item.date.startsWith(month) && item.currency === denomination && selectedCards.includes(item.card_id));
     if (!insights.length) return '';
     return `<details class="expense-reviews" id="expense-reviews"><summary>${icon('circle-alert')}<span>${text('Para revisar', 'To review')}</span><strong>${insights.length}</strong>${icon('chevron-down')}</summary><div>${insights.map(item => {
       const increased = item.kind === 'recurring_increase';
@@ -106,6 +107,15 @@ const DexExpenses = (() => {
       group.total += decimal(row.amount);
     });
     return [...groups.values()].sort((first, second) => first.total > second.total ? -1 : first.total < second.total ? 1 : first.key.localeCompare(second.key));
+  }
+  function compareMonths(value, currentMonth, currency, cards) {
+    const previous = new Date(currentMonth + '-01T12:00:00Z');
+    previous.setUTCMonth(previous.getUTCMonth() - 1);
+    const previousMonth = previous.toISOString().slice(0, 7);
+    if ([currentMonth, previousMonth].some(key => (value.withheld_months || []).includes(key) || !coverage(value.statements, key, cards))) return null;
+    const total = key => sum(value.transactions.filter(row => cards.includes(row.card_id) && row.date.startsWith(key) && row.currency === currency && ['purchase', 'tax', 'fee', 'refund'].includes(row.kind)));
+    const current = total(currentMonth), prior = total(previousMonth);
+    return {current, prior, delta: current - prior, previousMonth};
   }
   function matching(rows) {
     const term = clean(query.trim());
@@ -130,6 +140,27 @@ const DexExpenses = (() => {
     select('.expense-ring-center .caption').textContent = selection ? selection.mode === 'categories' ? categoryName(selection.key) : selection.key : text('Gasto registrado', 'Recorded spending');
     select('#expense-total').innerHTML = headlineAmount(sum(selected));
     select('.expense-count').textContent = countLabel(selected.length);
+    fitTotal();
+  }
+  function fitTotal() {
+    const total = select('#expense-total');
+    if (!total || !total.clientWidth) return;
+    total.style.fontSize = '26px';
+    for (let size = 25; total.scrollWidth > total.clientWidth && size >= 10; size--) total.style.fontSize = `${size}px`;
+  }
+  function resetGroup() {
+    selection = null;
+    updateCenter();
+    paintChart();
+    renderList();
+  }
+  function changeMonth(next) {
+    const direction = next > month ? 1 : -1;
+    month = next;
+    query = '';
+    selection = null;
+    render(direction, true);
+    icons();
   }
   function selectGroup(key, groupMode = mode, fromChart = false) {
     if (fromChart) {
@@ -201,6 +232,7 @@ const DexExpenses = (() => {
   function enter(direction = 0, summary = true) {
     entranceAnimations.forEach(animation => animation.cancel());
     entranceAnimations = [];
+    fitTotal();
     if (summary) paintChart();
     if (DexNative.reduced() || select('#gastos').hidden) return;
     const elements = [...(summary ? [select('.expense-ring-center')] : []), ...all('#expense-results .expense-category, #expense-results .expense-transaction').slice(0, 4)].filter(Boolean);
@@ -214,7 +246,7 @@ const DexExpenses = (() => {
     if (!container) return;
     const rows = matching(rowsFor(value));
     if (!rows.length) {
-      container.innerHTML = `<div class="empty">${icon(query ? 'search' : 'receipt-text')}<strong>${text(query ? 'Sin coincidencias' : 'Sin movimientos registrados', query ? 'No matches' : 'No recorded transactions')}</strong><span>${escapeHTML(monthName(month))} \u00b7 ${denomination}</span></div>`;
+      container.innerHTML = `<div class="empty">${icon(query ? 'search' : 'receipt-text')}<strong>${text(!selectedCards.length ? 'Sin tarjetas seleccionadas' : query ? 'Sin coincidencias' : 'Sin movimientos registrados', !selectedCards.length ? 'No cards selected' : query ? 'No matches' : 'No recorded transactions')}</strong><span>${escapeHTML(monthName(month))} \u00b7 ${denomination}</span></div>`;
     } else if (mode === 'transactions') {
       container.innerHTML = `<div class="expense-result-count">${countLabel(rows.length)}<strong class="sensitive">${amount(sum(rows))}</strong></div>${transactionRows(rows)}`;
     } else {
@@ -247,7 +279,10 @@ const DexExpenses = (() => {
     const available = months(value);
     const cards = cardsFor(value);
     selectedCards = cards.filter(card => selectedCards.includes(card.id)).map(card => card.id);
-    if (!selectedCards.length) selectedCards = cards.map(card => card.id);
+    if (!cardsInitialized && cards.length) {
+      selectedCards = cards.map(card => card.id);
+      cardsInitialized = true;
+    }
     if (!available.length) {
       renderKey = '';
       selection = null;
@@ -270,24 +305,23 @@ const DexExpenses = (() => {
     const taxes = sum(rows.filter(row => ['tax', 'fee'].includes(row.kind)));
     const refunds = sum(rows.filter(row => row.kind === 'refund'));
     const position = available.indexOf(month);
-    root.innerHTML = `<div class="expense-month-control">${button(text('Mes anterior', 'Previous month'), 'chevron-left', `data-expense-step="-1" ${position === 0 ? 'disabled' : ''}`)}<label class="expense-month"><span class="sr-only">${text('Mes de gastos', 'Spending month')}</span><select id="expense-month" aria-label="${text('Mes de gastos', 'Spending month')}">${available.map(key => `<option value="${key}" ${key === month ? 'selected' : ''}>${escapeHTML(monthName(key))}</option>`).join('')}</select>${icon('chevron-down')}</label>${button(text('Mes siguiente', 'Next month'), 'chevron-right', `data-expense-step="1" ${position === available.length - 1 ? 'disabled' : ''}`)}</div><div class="expense-card-rail" role="group" aria-label="${text('Tarjetas de cr\u00e9dito', 'Credit cards')}">${cards.map((card, index) => cardMarkup(card, index, value)).join('')}</div>
-      <section class="expense-overview" aria-label="${text('Resumen del mes', 'Monthly overview')}"><div class="expense-ring-wrap"><canvas id="expense-ring" width="264" height="264" role="img" aria-label="${text(hiddenAmounts ? 'Importes ocultos' : 'Gastos por categor\u00eda', hiddenAmounts ? 'Amounts hidden' : 'Spending by category')}"></canvas><div class="expense-ring-center"><span class="caption">${text('Gasto registrado', 'Recorded spending')}</span><div id="expense-total" class="sensitive">${rows.length || covered ? headlineAmount(sum(rows)) : '\u2014'}</div><span class="expense-count">${countLabel(rows.length)}</span><div class="segmented expense-currency" role="group" aria-label="${text('Moneda de gastos', 'Spending currency')}">${['CRC', 'USD'].map(unit => `<button type="button" data-expense-currency="${unit}" aria-pressed="${unit === denomination}">${unit}</button>`).join('')}</div></div></div><div class="expense-meta"><span class="expense-source">${escapeHTML([...new Set(statements.map(statement => statement.issuer))].join(' \u00b7 ') || text('Sin informe', 'No statement'))}</span><button type="button" class="expense-coverage" id="expense-coverage">${icon(covered ? 'calendar-check' : 'circle-alert')}${text(covered ? 'Per\u00edodo cubierto' : 'Mes parcial', covered ? 'Period covered' : 'Partial month')}${icon('chevron-right')}</button></div>${taxes || refunds ? `<div class="expense-breakdown">${taxes ? `<span>${text('IVA y cargos', 'Tax & fees')}<strong>${amount(taxes)}</strong></span>` : ''}${refunds ? `<span>${text('Devoluciones', 'Refunds')}<strong>${amount(refunds)}</strong></span>` : ''}</div>` : ''}</section>
+    root.innerHTML = `<div class="expense-month-control">${button(text('Mes anterior', 'Previous month'), 'chevron-left', `data-expense-step="-1" ${position === 0 ? 'disabled' : ''}`)}<button type="button" class="expense-month" id="expense-month" data-month="${month}" aria-haspopup="dialog" aria-label="${text('Mes de gastos', 'Spending month')}: ${escapeHTML(monthName(month))}"><span>${escapeHTML(monthName(month))}</span>${icon('chevron-down')}</button>${button(text('Mes siguiente', 'Next month'), 'chevron-right', `data-expense-step="1" ${position === available.length - 1 ? 'disabled' : ''}`)}</div><div class="expense-card-rail" role="group" aria-label="${text('Tarjetas de cr\u00e9dito', 'Credit cards')}">${cards.map((card, index) => cardMarkup(card, index, value)).join('')}</div>
+      <section class="expense-overview" aria-label="${text('Resumen del mes', 'Monthly overview')}"><div class="expense-ring-wrap"><canvas id="expense-ring" width="264" height="264" role="img" aria-label="${text(hiddenAmounts ? 'Importes ocultos' : 'Gastos por categor\u00eda', hiddenAmounts ? 'Amounts hidden' : 'Spending by category')}"></canvas><div class="expense-ring-center"><button type="button" id="expense-reset" aria-label="${text('Mostrar total del mes', 'Show monthly total')}" title="${text('Mostrar total del mes', 'Show monthly total')}"><span class="caption">${text('Gasto registrado', 'Recorded spending')}</span><span id="expense-total" class="sensitive">${headlineAmount(sum(rows))}</span><span class="expense-count">${countLabel(rows.length)}</span></button><div class="segmented expense-currency" role="group" aria-label="${text('Moneda de gastos', 'Spending currency')}">${['CRC', 'USD'].map(unit => `<button type="button" data-expense-currency="${unit}" aria-pressed="${unit === denomination}">${unit}</button>`).join('')}</div></div></div><div class="expense-meta"><span class="expense-source">${escapeHTML([...new Set(statements.map(statement => statement.issuer))].join(' \u00b7 ') || text('Sin informe', 'No statement'))}</span><button type="button" class="expense-coverage" id="expense-coverage" ${selectedCards.length ? '' : 'disabled'}>${icon(covered ? 'calendar-check' : 'circle-alert')}${text(!selectedCards.length ? 'Sin selecci\u00f3n' : covered ? 'Per\u00edodo cubierto' : 'Mes parcial', !selectedCards.length ? 'No selection' : covered ? 'Period covered' : 'Partial month')}${icon('chevron-right')}</button></div><div class="expense-breakdown">${taxes ? `<span>${text('IVA y cargos', 'Tax & fees')}<strong>${amount(taxes)}</strong></span>` : ''}${refunds ? `<span>${text('Devoluciones', 'Refunds')}<strong>${amount(refunds)}</strong></span>` : ''}</div></section>
       <div class="expense-browser"><div class="expense-views" role="group" aria-label="${text('Agrupar gastos', 'Group expenses')}">${[['categories', text('Categor\u00edas', 'Categories')], ['merchants', text('Comercios', 'Merchants')], ['transactions', text('Movimientos', 'Transactions')]].map(([key, label]) => `<button type="button" data-expense-mode="${key}" aria-pressed="${mode === key}">${label}</button>`).join('')}</div>${button(text('Buscar gastos', 'Search spending'), 'search', `id="expense-search-toggle" aria-expanded="${searching}" aria-controls="expense-search-box"`)}</div>
-      <label id="expense-search-box" class="search expense-search" ${searching ? '' : 'hidden'}>${icon('search')}<input id="expense-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="${text('Buscar comercio o movimiento', 'Search merchant or transaction')}" aria-label="${text('Buscar gastos', 'Search spending')}" value="${escapeHTML(query)}"></label>${reviewMarkup(value)}<div id="expense-results"></div>`;
+      <label id="expense-search-box" class="search expense-search" ${searching ? '' : 'hidden'}>${icon('search')}<input id="expense-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="${text('Buscar comercio o movimiento', 'Search merchant or transaction')}" aria-label="${text('Buscar gastos', 'Search spending')}" value="${escapeHTML(query)}"></label><div class="expense-ledger" tabindex="0" role="region" aria-label="${text('Detalle de gastos', 'Spending details')}"><div class="expense-analysis"><button type="button" id="expense-compare" ${selectedCards.length ? '' : 'disabled'}>${icon('chart-no-axes-combined')}${text('Comparar', 'Compare')}</button><button type="button" id="expense-recurring" ${selectedCards.length ? '' : 'disabled'}>${icon('repeat')}${text('Recurrentes', 'Recurring')}</button></div>${reviewMarkup(value)}<div id="expense-results"></div></div>`;
     all('[data-expense-card]').forEach(control => control.addEventListener('click', () => {
       const card = control.dataset.expenseCard;
-      if (selectedCards.length === 1 && selectedCards.includes(card)) return;
       selectedCards = selectedCards.includes(card) ? selectedCards.filter(id => id !== card) : [...selectedCards, card];
       selection = null;
       query = '';
-      render(0, true);
+      render();
       icons();
       all('[data-expense-card]').find(item => item.dataset.expenseCard === card)?.focus({preventScroll: true});
     }));
     if (select('#expense-reviews')) bindDetails(select('#expense-reviews'));
     chartGroups = grouped(rows, 'categories');
-    select('#expense-month').addEventListener('change', event => { const direction = event.target.value > month ? 1 : -1; month = event.target.value; query = ''; selection = null; render(direction, true); icons(); });
-    all('[data-expense-step]').forEach(control => control.addEventListener('click', () => { const direction = Number(control.dataset.expenseStep); month = available[position + direction]; query = ''; selection = null; render(direction, true); icons(); select(`[data-expense-step="${direction}"]`).focus({preventScroll: true}); }));
+    select('#expense-month').addEventListener('click', event => openDetail('expense', {months: true}, event.currentTarget));
+    all('[data-expense-step]').forEach(control => control.addEventListener('click', () => { const direction = Number(control.dataset.expenseStep); changeMonth(available[position + direction]); select(`[data-expense-step="${direction}"]`).focus({preventScroll: true}); }));
     all('[data-expense-currency]').forEach(control => control.addEventListener('click', () => { if (denomination === control.dataset.expenseCurrency) return; denomination = control.dataset.expenseCurrency; selection = null; render(0, true); icons(); select(`[data-expense-currency="${denomination}"]`).focus({preventScroll: true}); }));
     all('[data-expense-mode]').forEach(control => control.addEventListener('click', () => {
       mode = control.dataset.expenseMode;
@@ -310,8 +344,13 @@ const DexExpenses = (() => {
       else { query = ''; selection = null; select('#expense-search').value = ''; updateCenter(); paintChart(); renderList(); }
     });
     select('#expense-coverage').addEventListener('click', event => openDetail('expense', {coverage: true}, event.currentTarget));
+    select('#expense-reset').addEventListener('click', resetGroup);
+    select('#expense-compare').addEventListener('click', event => openDetail('expense', {compare: true}, event.currentTarget));
+    select('#expense-recurring').addEventListener('click', event => openDetail('expense', {recurring: true}, event.currentTarget));
     renderList(value);
     if (selection) updateCenter();
+    fitTotal();
+    document.fonts.ready.then(fitTotal);
     if (animate && !select('#gastos').hidden) enter(direction);
     else paintChart();
   }
@@ -333,7 +372,21 @@ const DexExpenses = (() => {
     const value = data();
     const container = select('#detail-content');
     select('#detail-eyebrow').textContent = text('GASTOS', 'SPENDING');
-    if (selection.coverage) {
+    if (selection.months) {
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Mes de gastos', 'Spending month')}</h2></div><div class="expense-month-options">${months(value).reverse().map(key => `<button type="button" class="expense-month-choice" data-expense-month-option="${key}" aria-pressed="${key === month}">${escapeHTML(monthName(key))}</button>`).join('')}</div>`;
+      container.querySelectorAll('[data-expense-month-option]').forEach(control => control.addEventListener('click', () => {
+        closeDetail();
+        changeMonth(control.dataset.expenseMonthOption);
+        select('#expense-month').focus({preventScroll: true});
+      }));
+    } else if (selection.compare) {
+      const comparison = compareMonths(value, month, denomination, selectedCards);
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Mes a mes', 'Month to month')}</h2></div>${comparison ? `<p class="subtle">${text('Meses completos, mismas tarjetas', 'Complete months, same cards')} \u00b7 ${denomination}</p>${line(escapeHTML(monthName(comparison.previousMonth)), amount(comparison.prior))}${line(escapeHTML(monthName(month)), amount(comparison.current))}${line(text('Diferencia de gasto', 'Spending difference'), amount(comparison.delta))}${comparison.prior > 0n ? line(text('Variaci\u00f3n', 'Change'), hiddenAmounts ? '\u2022\u2022\u2022\u2022' : (Number(comparison.delta * 1000n / comparison.prior) / 10).toLocaleString(I18n.locale) + '%') : ''}` : `<p class="subtle">${text('Solo se comparan meses completos para todas las tarjetas seleccionadas. Falta cobertura del mes actual o del anterior.', 'Comparison requires complete coverage for all selected cards in both this month and the previous one.')}</p>`}`;
+    } else if (selection.recurring) {
+      const items = (value.insights || []).filter(item => item.kind === 'recurring_payment' && item.date.startsWith(month) && item.currency === denomination && selectedCards.includes(item.card_id));
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Posibles recurrentes', 'Possible recurring payments')}</h2></div><p class="subtle">${escapeHTML(monthName(month))} \u00b7 ${denomination}</p><p class="subtle">${text('Tres meses completos con un cargo mensual. El patr\u00f3n no confirma una suscripci\u00f3n.', 'Three complete months with one monthly charge. This pattern does not confirm a subscription.')}</p>${items.length ? items.map(item => `<details class="expense-insight"><summary><span><strong data-no-translate>${escapeHTML(item.merchant)}</strong><small>${escapeHTML(cardName(cardsFor(value).find(card => card.id === item.card_id)))}</small></span><strong class="sensitive">${money(item.amount, item.currency)}</strong>${icon('chevron-down')}</summary>${line(text('Cambio mensual', 'Monthly change'), money(item.change, item.currency))}${transactionRows(value.transactions.filter(row => item.transaction_ids.includes(row.id)))}</details>`).join('') : `<div class="empty"><strong>${text('Sin patrones suficientes', 'Not enough evidence')}</strong></div>`}`;
+      bindDetails(container, selection);
+    } else if (selection.coverage) {
       const statements = value.statements.filter(statement => selectedCards.includes(statement.card_id) && statement.start.slice(0, 7) <= month && statement.end.slice(0, 7) >= month);
       container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${escapeHTML(monthName(month))}</h2></div><p class="subtle">${text('Cobertura de los estados recibidos. No incluye otras tarjetas, efectivo ni compras pendientes de registrar.', 'Coverage of received statements. Excludes other cards, cash and purchases not yet posted.')}</p>${statements.map(statement => `<div class="expense-statement"><img src="./brand-bac.svg" width="36" height="36" alt=""><div><strong data-no-translate>${escapeHTML(statement.issuer)} \u00b7 ${escapeHTML(cardName(cardsFor(value).find(card => card.id === statement.card_id)))}</strong><p>${escapeHTML(dateLabel(statement.start))} \u2013 ${escapeHTML(dateLabel(statement.end, true))}</p></div></div>`).join('')}<p class="subtle">${text('Compras por fecha del movimiento. Los pagos de la tarjeta no se cuentan otra vez como gasto. Categor\u00edas sugeridas a partir del comercio.', 'Purchases by transaction date. Card payments are not counted again as spending. Categories are suggested from the merchant.')}</p>`;
     } else if (selection.transaction) {
@@ -352,5 +405,6 @@ const DexExpenses = (() => {
       bindDetails(container, selection);
     }
   }
-  return {render, detail, grouped, coverage, months, enter};
+  window.addEventListener('resize', fitTotal);
+  return {render, detail, grouped, coverage, months, compareMonths, enter};
 })();
