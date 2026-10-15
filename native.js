@@ -75,9 +75,7 @@ const DexNative = (() => {
     update();
     if (reduced() || !before) return;
     const after = document.querySelector('.view:not([hidden])');
-    const views = [...document.querySelectorAll('.view')];
-    const direction = views.indexOf(after) < views.indexOf(before) ? -1 : 1;
-    if (after) viewAnimation = after.animate([{transform: `translateX(${direction * 18}px)`}, {transform: 'none'}], {duration: 300, easing: 'cubic-bezier(.25, .8, .25, 1)'});
+    if (after) viewAnimation = after.animate([{opacity: .65}, {opacity: 1}], {duration: 160, easing: 'ease-out'});
   }
 
   // Sheet presentation and interactive dismissal.
