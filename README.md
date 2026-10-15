@@ -1,6 +1,6 @@
 # DEX Web
 
-Build: 0.9.0-expenses6. GitHub Pages interface with optional encrypted summary reading.
+Build: 0.9.0-expenses7. GitHub Pages interface with optional encrypted summary reading.
 The private daily workflow publishes only data/dex-snapshot.json (AES-256-GCM).
 Never upload a decryption key, credentials, private source or plaintext financial data.
 
@@ -28,3 +28,7 @@ Official assets, retrieved 2026-09-23:
 - Interactive Brokers: https://www.interactivebrokers.com/images/web/favicons/home-screen-icon-192x192.png
 - Binance: https://bin.bnbstatic.com/static/images/common/favicon.ico
 The Binance symbol is rendered locally as SVG geometry instead of enlarging the favicon.
+BAC product art retrieved 2026-10-15, with transparent outer margins trimmed:
+- LifeMiles Visa Infinite (Black): https://www.baccredomatic.com/es-cr/personas/tarjetas/viajes/avianca-lifemiles-infinite/visa/infinite
+- Blue American Express: https://www.baccredomatic.com/es-cr/personas/tarjetas/destacadas/blue-american-expressr/american-express/blue
+Product artwork identifies the card only; it does not imply a partnership or endorsement.

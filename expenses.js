@@ -9,7 +9,7 @@ const DexExpenses = (() => {
   let chartGroups = [];
   let entranceAnimations = [];
   let selection = null;
-  let selectedCard = '';
+  let selectedCards = [];
   let renderKey = '';
   const labels = {
     food: ['Comidas y caf\u00e9', 'Food & coffee', 'utensils', '#da8b66'],
@@ -65,17 +65,29 @@ const DexExpenses = (() => {
     return result.filter(key => !(value.withheld_months || []).includes(key));
   }
   function cardsFor(value) {
-    const cards = value.cards || [...new Map(value.statements.map(statement => [statement.card_id, {id: statement.card_id, issuer: statement.issuer, last4: statement.last4 || ''}])).values()];
+    const cards = value.cards || [...new Map(value.statements.map(statement => [statement.card_id, {id: statement.card_id, issuer: statement.issuer, last4: statement.last4 || '', product: statement.product || ''}])).values()];
     return [...cards].sort((first, last) => (first.last4 || first.id).localeCompare(last.last4 || last.id));
+  }
+  function cardProduct(card) {
+    return ({
+      'bac-lifemiles-visa-black': {name: 'BAC LifeMiles Black Visa', image: 'card-bac-lifemiles.png'},
+      'bac-amex-blue': {name: 'BAC Blue American Express', image: 'card-bac-amex-blue.png'}
+    })[card.product] || null;
+  }
+  function cardMarkup(card, index, value) {
+    const product = cardProduct(card);
+    const selected = selectedCards.includes(card.id);
+    const label = (product?.name || card.issuer || text('Tarjeta', 'Card')) + ' ' + cardName(card, index);
+    return `<button type="button" class="expense-card" data-expense-card="${escapeHTML(card.id)}" aria-pressed="${selected}" aria-disabled="${selectedCards.length === 1 && selected}" aria-label="${escapeHTML(label)}" title="${escapeHTML(label)}"><span class="expense-card-surface">${product ? `<img class="expense-card-art" src="./${product.image}" width="557" height="352" alt="" draggable="false">` : `<span class="expense-card-fallback"><img src="./brand-bac.svg" width="32" height="32" alt="BAC"></span>`}</span><span class="expense-card-meta"><span data-no-translate>${escapeHTML(cardName(card, index))}</span><span class="expense-card-check" aria-hidden="true">${icon('check')}</span></span><strong class="sensitive">${amount(sum(rowsFor(value, card.id)))}</strong></button>`;
   }
   function cardName(card, index = 0) {
     return card?.last4 ? '\u2022\u2022 ' + card.last4 : text('Tarjeta ', 'Card ') + (index + 1);
   }
-  function rowsFor(value, card = selectedCard) {
-    return value.transactions.filter(row => (!card || row.card_id === card) && row.date.startsWith(month) && row.currency === denomination && ['purchase', 'tax', 'fee', 'refund'].includes(row.kind));
+  function rowsFor(value, card = null) {
+    return value.transactions.filter(row => (card ? row.card_id === card : selectedCards.includes(row.card_id)) && row.date.startsWith(month) && row.currency === denomination && ['purchase', 'tax', 'fee', 'refund'].includes(row.kind));
   }
   function reviewMarkup(value) {
-    const insights = (value.insights || []).filter(item => item.date.startsWith(month) && item.currency === denomination && (!selectedCard || item.card_id === selectedCard));
+    const insights = (value.insights || []).filter(item => item.date.startsWith(month) && item.currency === denomination && selectedCards.includes(item.card_id));
     if (!insights.length) return '';
     return `<details class="expense-reviews" id="expense-reviews"><summary>${icon('circle-alert')}<span>${text('Para revisar', 'To review')}</span><strong>${insights.length}</strong>${icon('chevron-down')}</summary><div>${insights.map(item => {
       const increased = item.kind === 'recurring_increase';
@@ -234,7 +246,8 @@ const DexExpenses = (() => {
     select('#gastos').dataset.title = text('Gastos', 'Spending');
     const available = months(value);
     const cards = cardsFor(value);
-    if (selectedCard && !cards.some(card => card.id === selectedCard)) selectedCard = '';
+    selectedCards = cards.filter(card => selectedCards.includes(card.id)).map(card => card.id);
+    if (!selectedCards.length) selectedCards = cards.map(card => card.id);
     if (!available.length) {
       renderKey = '';
       selection = null;
@@ -246,28 +259,30 @@ const DexExpenses = (() => {
       previous.setUTCDate(1); previous.setUTCMonth(previous.getUTCMonth() - 1);
       month = available.includes(previous.toISOString().slice(0, 7)) ? previous.toISOString().slice(0, 7) : available.at(-1);
     }
-    const nextKey = JSON.stringify([value, month, denomination, selectedCard, hiddenAmounts, I18n.language, getComputedStyle(document.documentElement).getPropertyValue('--fill-2')]);
+    const nextKey = JSON.stringify([value, month, denomination, selectedCards, hiddenAmounts, I18n.language, getComputedStyle(document.documentElement).getPropertyValue('--fill-2')]);
     if (nextKey === renderKey && select('#expense-ring')) return;
     renderKey = nextKey;
     entranceAnimations.forEach(animation => animation.cancel());
     entranceAnimations = [];
     const rows = rowsFor(value);
-    const statements = value.statements.filter(statement => (!selectedCard || statement.card_id === selectedCard) && statement.start.slice(0, 7) <= month && statement.end.slice(0, 7) >= month);
-    const covered = coverage(statements, month, cards.filter(card => !selectedCard || card.id === selectedCard).map(card => card.id));
+    const statements = value.statements.filter(statement => selectedCards.includes(statement.card_id) && statement.start.slice(0, 7) <= month && statement.end.slice(0, 7) >= month);
+    const covered = coverage(statements, month, selectedCards);
     const taxes = sum(rows.filter(row => ['tax', 'fee'].includes(row.kind)));
     const refunds = sum(rows.filter(row => row.kind === 'refund'));
     const position = available.indexOf(month);
-    root.innerHTML = `<div class="expense-card-heading"><span>${text('Tarjetas', 'Cards')}</span><button type="button" data-expense-card="" aria-pressed="${!selectedCard}">${text('Todas', 'All')}${icon('check')}</button></div><div class="expense-card-rail" role="group" aria-label="${text('Tarjetas de cr\u00e9dito', 'Credit cards')}">${cards.map((card, index) => `<button type="button" class="expense-card" data-tone="${index % 2 ? 'graphite' : 'red'}" data-expense-card="${escapeHTML(card.id)}" aria-pressed="${selectedCard === card.id}" aria-label="${escapeHTML(text('Tarjeta ', 'Card ') + cardName(card, index))}"><span class="expense-card-top"><img src="./brand-bac.svg" width="26" height="26" alt="BAC"><span data-no-translate>${escapeHTML(cardName(card, index))}</span>${icon('check')}</span><strong class="sensitive">${amount(sum(rowsFor(value, card.id)))}</strong><small>${escapeHTML(monthName(month))} \u00b7 ${denomination}</small></button>`).join('')}</div><div class="expense-month-control">${button(text('Mes anterior', 'Previous month'), 'chevron-left', `data-expense-step="-1" ${position === 0 ? 'disabled' : ''}`)}<label class="expense-month"><span class="sr-only">${text('Mes de gastos', 'Spending month')}</span><select id="expense-month" aria-label="${text('Mes de gastos', 'Spending month')}">${available.map(key => `<option value="${key}" ${key === month ? 'selected' : ''}>${escapeHTML(monthName(key))}</option>`).join('')}</select>${icon('chevron-down')}</label>${button(text('Mes siguiente', 'Next month'), 'chevron-right', `data-expense-step="1" ${position === available.length - 1 ? 'disabled' : ''}`)}</div>
+    root.innerHTML = `<div class="expense-card-rail" role="group" aria-label="${text('Tarjetas de cr\u00e9dito', 'Credit cards')}">${cards.map((card, index) => cardMarkup(card, index, value)).join('')}</div><div class="expense-month-control">${button(text('Mes anterior', 'Previous month'), 'chevron-left', `data-expense-step="-1" ${position === 0 ? 'disabled' : ''}`)}<label class="expense-month"><span class="sr-only">${text('Mes de gastos', 'Spending month')}</span><select id="expense-month" aria-label="${text('Mes de gastos', 'Spending month')}">${available.map(key => `<option value="${key}" ${key === month ? 'selected' : ''}>${escapeHTML(monthName(key))}</option>`).join('')}</select>${icon('chevron-down')}</label>${button(text('Mes siguiente', 'Next month'), 'chevron-right', `data-expense-step="1" ${position === available.length - 1 ? 'disabled' : ''}`)}</div>
       <section class="expense-overview" aria-label="${text('Resumen del mes', 'Monthly overview')}"><div class="expense-ring-wrap"><canvas id="expense-ring" width="264" height="264" role="img" aria-label="${text(hiddenAmounts ? 'Importes ocultos' : 'Gastos por categor\u00eda', hiddenAmounts ? 'Amounts hidden' : 'Spending by category')}"></canvas><div class="expense-ring-center"><span class="caption">${text('Gasto registrado', 'Recorded spending')}</span><div id="expense-total" class="sensitive">${rows.length || covered ? headlineAmount(sum(rows)) : '\u2014'}</div><span class="expense-count">${countLabel(rows.length)}</span><div class="segmented expense-currency" role="group" aria-label="${text('Moneda de gastos', 'Spending currency')}">${['CRC', 'USD'].map(unit => `<button type="button" data-expense-currency="${unit}" aria-pressed="${unit === denomination}">${unit}</button>`).join('')}</div></div></div><div class="expense-meta"><span class="expense-source">${escapeHTML([...new Set(statements.map(statement => statement.issuer))].join(' \u00b7 ') || text('Sin informe', 'No statement'))}</span><button type="button" class="expense-coverage" id="expense-coverage">${icon(covered ? 'calendar-check' : 'circle-alert')}${text(covered ? 'Per\u00edodo cubierto' : 'Mes parcial', covered ? 'Period covered' : 'Partial month')}${icon('chevron-right')}</button></div>${taxes || refunds ? `<div class="expense-breakdown">${taxes ? `<span>${text('IVA y cargos', 'Tax & fees')}<strong>${amount(taxes)}</strong></span>` : ''}${refunds ? `<span>${text('Devoluciones', 'Refunds')}<strong>${amount(refunds)}</strong></span>` : ''}</div>` : ''}</section>
       <div class="expense-browser"><div class="expense-views" role="group" aria-label="${text('Agrupar gastos', 'Group expenses')}">${[['categories', text('Categor\u00edas', 'Categories')], ['merchants', text('Comercios', 'Merchants')], ['transactions', text('Movimientos', 'Transactions')]].map(([key, label]) => `<button type="button" data-expense-mode="${key}" aria-pressed="${mode === key}">${label}</button>`).join('')}</div>${button(text('Buscar gastos', 'Search spending'), 'search', `id="expense-search-toggle" aria-expanded="${searching}" aria-controls="expense-search-box"`)}</div>
       <label id="expense-search-box" class="search expense-search" ${searching ? '' : 'hidden'}>${icon('search')}<input id="expense-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="${text('Buscar comercio o movimiento', 'Search merchant or transaction')}" aria-label="${text('Buscar gastos', 'Search spending')}" value="${escapeHTML(query)}"></label>${reviewMarkup(value)}<div id="expense-results"></div>`;
     all('[data-expense-card]').forEach(control => control.addEventListener('click', () => {
-      selectedCard = control.dataset.expenseCard;
+      const card = control.dataset.expenseCard;
+      if (selectedCards.length === 1 && selectedCards.includes(card)) return;
+      selectedCards = selectedCards.includes(card) ? selectedCards.filter(id => id !== card) : [...selectedCards, card];
       selection = null;
       query = '';
       render(0, true);
       icons();
-      all('[data-expense-card]').find(item => item.dataset.expenseCard === selectedCard)?.focus({preventScroll: true});
+      all('[data-expense-card]').find(item => item.dataset.expenseCard === card)?.focus({preventScroll: true});
     }));
     if (select('#expense-reviews')) bindDetails(select('#expense-reviews'));
     chartGroups = grouped(rows, 'categories');
@@ -319,7 +334,7 @@ const DexExpenses = (() => {
     const container = select('#detail-content');
     select('#detail-eyebrow').textContent = text('GASTOS', 'SPENDING');
     if (selection.coverage) {
-      const statements = value.statements.filter(statement => (!selectedCard || statement.card_id === selectedCard) && statement.start.slice(0, 7) <= month && statement.end.slice(0, 7) >= month);
+      const statements = value.statements.filter(statement => selectedCards.includes(statement.card_id) && statement.start.slice(0, 7) <= month && statement.end.slice(0, 7) >= month);
       container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${escapeHTML(monthName(month))}</h2></div><p class="subtle">${text('Cobertura de los estados recibidos. No incluye otras tarjetas, efectivo ni compras pendientes de registrar.', 'Coverage of received statements. Excludes other cards, cash and purchases not yet posted.')}</p>${statements.map(statement => `<div class="expense-statement"><img src="./brand-bac.svg" width="36" height="36" alt=""><div><strong data-no-translate>${escapeHTML(statement.issuer)} \u00b7 ${escapeHTML(cardName(cardsFor(value).find(card => card.id === statement.card_id)))}</strong><p>${escapeHTML(dateLabel(statement.start))} \u2013 ${escapeHTML(dateLabel(statement.end, true))}</p></div></div>`).join('')}<p class="subtle">${text('Compras por fecha del movimiento. Los pagos de la tarjeta no se cuentan otra vez como gasto. Categor\u00edas sugeridas a partir del comercio.', 'Purchases by transaction date. Card payments are not counted again as spending. Categories are suggested from the merchant.')}</p>`;
     } else if (selection.transaction) {
       const row = value.transactions.find(item => item.id === selection.transaction);
