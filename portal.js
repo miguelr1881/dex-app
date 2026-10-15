@@ -127,6 +127,14 @@ const Portal = (() => {
     const current = generation;
     const data = Snapshot.connected ? await Snapshot.summary() : await SheetsReader.decode((await request('DEX_app!A:E')).values);
     if (current !== generation) throw new Error('Session ended');
+    const destination = Snapshot.connected && data.remote_editing?.spreadsheet;
+    if (typeof destination === 'string' && /^[a-zA-Z0-9_-]{20,160}$/.test(destination)) {
+      if (sessionConfig && sessionConfig.spreadsheet !== destination) clear();
+      if (field('google-sheet').value !== destination) {
+        field('google-sheet').value = destination;
+        try { localStorage.setItem('dex.portal-settings', JSON.stringify(settings())); } catch {}
+      }
+    }
     receipts = data.remote_editing?.receipts || [];
     if (data.remote_editing?.enabled && token && Date.now() < expires) {
       try {

@@ -2,7 +2,7 @@
   "files_sha256": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "LUCIDE-LICENSE": "1e7290b35280a048667bbf0ebabac1c7fd52a75300e8b2946ac165715997f2bc",
-    "README.md": "b2ce320687104950338651eaaa03a0ca33ece36ef240139816c268fe9ffc72b3",
+    "README.md": "c115e926ad9195428e8f37d0390a13b583b264a8ae8231a2cb2ba34793d4ec41",
     "app.js": "6bdc30d926317c1af4f95cd398db703c4c64865046a063d0cb5fe3f2c0786c97",
     "apple-touch-icon.png": "019b1971f80a357bb47f645499ed3dca007e6df48891203bba4dbc397c21914c",
     "brand-bac.svg": "32493e55da7ac457658c384a78286699e898a62669c54dad2b9f674a3376e744",
@@ -19,12 +19,12 @@
     "icon-maskable-512.png": "b57c8139e290bf2eb359ec7603a88a25221bb6b42b836f295fe6dba63d4372c1",
     "icon.png": "ed556b6aa6225550bbbb3b75323963e84db6ac2ca47171f0d03d2ae89fd0371b",
     "icons.js": "545b2edcf9081fa3deb40d1989c1399ec5a94648f4d57cb08dab05805e90d17c",
-    "index.html": "cac0afb551e7e7bf4ded3d32509674c836623fbd3c7e90bae174d59b022e9085",
+    "index.html": "abc2f94fde771e99bee949938d4237581a88a7f793ab8172fbbcb19734923504",
     "manifest.webmanifest": "0c5eb00981062e234584ac994ff48d9e315b2a272cafa0aac39361dd13609212",
     "native.js": "01f4e8839898e10e9e84e292119695e42dc966e06f7483dfc15f4bac5d2882eb",
     "plan.js": "4d3902e5ecc32fde00c1e3d6d26d4f809d4c4e2074170b4d559823528e0573b7",
     "portal.css": "7bac5e189bdb1ede0748b71386c7cf527b0fe904e7388da9903fd59750736e01",
-    "portal.js": "6ddace376ff6a3b77445918b1a1c374cb4cf9ff2ccaf672e5c56956f1f49b116",
+    "portal.js": "511ac3e1e3b41e5ec1d62e4653ba9a4ebb9e842c6a3e6435713123167ba27bfd",
     "privacy.css": "c7e421fa44557af05a3c076e60a3ea4a69cc3ebc67aa3ae4445254d2ee651d51",
     "privacy.html": "ec05c3dfc6fbab8e0e614a54f3435b35b9a82bdff4f2ddc1c0c77b8e0b302e5b",
     "sheets-reader.js": "388196d81737e36af334bcb23b9d0c596ae18fe7a9a5e9bdf194b06ba4059694",
@@ -75,7 +75,7 @@
     "splash/launch-640x1136.png": "f7227801c0137bb34ce57c54c1f910bab05320cdb14798a05f691e7ad56a37e0",
     "splash/launch-750x1334.png": "79b396f28790e7e0b86f5ef0f4cfea41e38433fe8c9cf96d723a8e424acbee16",
     "splash/launch-828x1792.png": "2a16d11dff970a9e5466f0acf785ad1db27c49a369f58dce1c16ecfb6c6ad7de",
-    "sw.js": "468afc3faeff2971d5eebb564a2c25a31eaa294adfb75fbe485730a6dd604a98"
+    "sw.js": "fb27fd6e31f79333711c8b722bce1734fc66f4a9e29c2ba9e29756345f123a7a"
   },
   "contains_private_data": false,
   "scope": "interface_only"
