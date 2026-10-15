@@ -172,7 +172,7 @@ const I18n = (() => {
     ['Actualizaci\u00f3n autom\u00e1tica pendiente', 'Automatic updates pending'], ['Estado no disponible', 'Status unavailable'],
     ['Actualizaci\u00f3n autom\u00e1tica desactivada', 'Automatic updates disabled'], ['Actualizaci\u00f3n con errores', 'Update errors'],
     ['Actualizaci\u00f3n autom\u00e1tica local', 'Local automatic updates'], ['Historial', 'History'], ['Respaldo', 'Backup'], ['En curso', 'Running'], ['Actualizado', 'Updated'],
-    ['Resumen', 'Summary'], ['Rendimiento', 'Performance'], ['Cuentas', 'Accounts'], ['Ajustes', 'Settings'],
+    ['Resumen', 'Summary'], ['Rendimiento', 'Performance'], ['Gastos', 'Spending'], ['Cuentas', 'Accounts'], ['Ajustes', 'Settings'],
     ['Ir al contenido', 'Skip to content'], ['DEX, resumen', 'DEX, summary'], ['Navegaci\u00f3n principal', 'Main navigation'],
     ['SOLO LECTURA', 'READ ONLY'], ['Patrimonio', 'Net worth'], ['Tu patrimonio', 'Your net worth'],
     ['Total del patrimonio', 'Total net worth'], ['Moneda', 'Currency'], ['Todo USD', 'All USD'], ['TODO USD', 'ALL USD'],
@@ -283,7 +283,7 @@ const I18n = (() => {
     [/^Compra (.+)$/, date => `Purchase ${date}`], [/^Base (.+) \u00b7 proyectado a hoy$/, date => `Baseline ${date} \u00b7 projected through today`],
     [/^Saldo registrado al (.+)$/, date => `Balance recorded on ${date}`], [/^Cambio programado: (.+)$/, date => `Scheduled change: ${date}`],
     [/^(.+) pendiente de incluir\.$/, name => `${name} not yet included.`], [/^(.*) unidades$/, quantity => `${quantity} units`],
-    [/^Abrir (.+)$/, name => `Open ${name}`], [/^(Resumen|Rendimiento|Cuentas|Ajustes) \u00b7 DEX$/, name => `${catalog.get(name)} \u00b7 DEX`],
+    [/^Abrir (.+)$/, name => `Open ${name}`], [/^(Resumen|Rendimiento|Gastos|Cuentas|Ajustes) \u00b7 DEX$/, name => `${catalog.get(name)} \u00b7 DEX`],
     [/^Distribuci\u00f3n de saldos positivos en (.+), (\d+) categor\u00edas$/, (unit, count) => `Positive balance allocation in ${unit}, ${count} categories`],
     [/^(P\/L no realizado|Patrimonio) en (.+)\. (\d+) observaciones\. Datos en Observaciones\.$/, (metric, unit, count) => `${metric === 'Patrimonio' ? 'Net worth' : 'Unrealized P/L'} in ${unit}. ${count} observations. Data in observations.`]
   ];

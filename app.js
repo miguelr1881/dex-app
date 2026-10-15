@@ -397,6 +397,11 @@ function setNotice() {
   notice.dataset.state = failedRefresh ? 'error' : offline ? 'offline' : snapshot?.demo ? 'demo' : '';
   notice.hidden = !snapshot?.demo && !failedRefresh && !offline;
   notice.textContent = failedRefresh ? (snapshot ? 'No se pudo actualizar. Se conserva la vista anterior.' : 'Resumen no disponible. Comprueba el servidor local y vuelve a actualizar.') : offline ? 'Sin conexi\u00f3n. No hay actualizaciones disponibles.' : 'Demostraci\u00f3n \u00b7 Datos de ejemplo, no tus saldos.';
+  if (snapshot?.expenses?.preview && !failedRefresh && !offline) {
+    notice.hidden = false;
+    notice.dataset.state = 'preview';
+    notice.textContent = I18n.language === 'en' ? 'Local preview \u00b7 Not imported' : 'Vista previa local \u00b7 Sin importar';
+  }
   if (Portal.enabled && failedRefresh) notice.textContent = 'No se pudo actualizar el resumen. Se conserva la vista anterior si est\u00e1 disponible.';
   if (Portal.enabled && Portal.persistent && Portal.cached && !failedRefresh) {
     notice.hidden = false;
@@ -583,6 +588,7 @@ function render() {
   document.body.classList.remove('loading');
   renderSummary(); renderAccounts(); renderSettings(); renderPrivacy(); renderAdjustments(); renderPayroll(); renderHistory(); renderPerformance(); renderMarket(); renderAutomation(); setNotice();
   DexPlan.render();
+  DexExpenses.render();
   if (currentDetail && !['adjustment', 'salary', 'planning'].includes(currentDetail.kind) && select('#detail').open) renderDetail(currentDetail);
   icons();
   if (Portal.enabled) {
@@ -1284,7 +1290,9 @@ async function saveAdjustment(change) {
 }
 function renderDetail(detail) {
   const container = select('#detail-content');
-  if (detail.kind === 'perspective') {
+  if (detail.kind === 'expense') {
+    DexExpenses.detail(detail.id);
+  } else if (detail.kind === 'perspective') {
     renderPerspective();
   } else if (detail.kind === 'planning') {
     DexPlan.form(detail.id);
@@ -1411,12 +1419,12 @@ let currentRoute = '';
 function navigate() {
   const target = location.hash.slice(1) || 'resumen';
   const planTitle = DexPlan.route(target);
-  const view = planTitle ? 'plan' : ['resumen', 'rendimiento', 'cuentas', 'ajustes'].includes(target) ? target : 'resumen';
+  const view = planTitle ? 'plan' : ['resumen', 'rendimiento', 'gastos', 'cuentas', 'ajustes'].includes(target) ? target : 'resumen';
   const changed = target !== currentRoute;
   if (changed) scrollMemory[currentRoute] = scrollY;
   all('.view').forEach(section => { section.hidden = section.id !== view; });
   all('.navigation>a').forEach(link => { if (link.dataset.view === (view === 'plan' ? 'resumen' : view)) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current'); });
-  document.title = `${I18n.translate(planTitle || {resumen: 'Resumen', rendimiento: 'Rendimiento', cuentas: 'Cuentas', ajustes: 'Ajustes'}[view])} \u00b7 DEX`;
+  document.title = `${I18n.translate(planTitle || {resumen: 'Resumen', rendimiento: 'Rendimiento', gastos: 'Gastos', cuentas: 'Cuentas', ajustes: 'Ajustes'}[view])} \u00b7 DEX`;
   all('#app-menu a, #app-menu [data-menu-view]').forEach(link => {
     const selected = (link.dataset.menuView || link.hash.slice(1)) === target;
     if (selected) link.setAttribute('aria-current', 'page'); else link.removeAttribute('aria-current');
@@ -1438,6 +1446,7 @@ function navigate() {
     requestAnimationFrame(() => window.scrollTo({top, behavior: 'instant'}));
   }
   DexNative.viewChanged(select('#' + view));
+  if (view === 'gastos' && snapshot && changed) DexExpenses.enter();
   loadMarket(); loadAutomation();
 }
 function validateSnapshot(data) {

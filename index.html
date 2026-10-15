@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; img-src 'self' https://*.googleusercontent.com; connect-src 'self' https://sheets.googleapis.com https://accounts.google.com/gsi/ https://api.coinbase.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <meta name="dex-build" content="0.9.0-plan26">
+  <meta name="dex-build" content="0.9.0-expenses4">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -76,6 +76,7 @@
   <script src="./portal.js" defer></script>
   <script src="./native.js" defer></script>
   <script src="./plan.js" defer></script>
+  <script src="./expenses.js" defer></script>
   <script src="./app.js" defer></script>
 </head>
 <body class="loading">
@@ -112,8 +113,8 @@
         </details>
       </section>
       <section id="resumen" class="view" aria-labelledby="summary-heading" data-title="Patrimonio">
+        <div class="page-heading"><h1 id="summary-heading">Patrimonio</h1></div>
         <section class="balance-panel" aria-label="Total del patrimonio">
-          <h1 id="summary-heading" class="sr-only">Patrimonio</h1>
           <div class="balance-top"><span class="balance-label" id="balance-label">Total</span><button class="icon-button plain" id="coverage-open" aria-label="Datos y tipo de cambio" title="Datos y tipo de cambio"><i data-lucide="info"></i></button></div>
           <div class="balance-value sensitive" id="balance" aria-live="polite">••••••</div>
           <div id="balance-change" class="balance-change"></div>
@@ -138,6 +139,10 @@
         <section class="surface-section crypto-section" aria-labelledby="crypto-heading"><div class="section-heading"><h2 id="crypto-heading">Criptoactivos</h2><span id="crypto-status" class="small-label">Binance</span></div><div id="crypto-list" class="group-list"></div><p id="crypto-note" class="subtle"></p></section>
         <section class="surface-section" aria-labelledby="btc-heading"><div class="section-heading"><h2 id="btc-heading">Precio BTC/USD</h2><span class="small-label">Coinbase</span></div><div class="quote"><div id="btc-price" class="history-summary">&#8212;</div><p id="btc-price-note" class="subtle">Precio pendiente</p></div></section>
         <div id="performance-history-slot"></div>
+      </section>
+      <section id="gastos" class="view" aria-labelledby="expenses-heading" data-title="Gastos" hidden>
+        <div class="page-heading"><h1 id="expenses-heading">Gastos</h1></div>
+        <div id="expenses-content"></div>
       </section>
       <section id="cuentas" class="view" aria-labelledby="accounts-heading" data-title="Cuentas" hidden>
         <div class="page-heading"><h1 id="accounts-heading">Cuentas</h1></div>
@@ -179,6 +184,7 @@
     <nav class="navigation" aria-label="Navegaci&#243;n principal">
       <a href="#resumen" data-view="resumen" aria-current="page"><i data-lucide="house"></i><span>Resumen</span></a>
       <a href="#rendimiento" data-view="rendimiento"><i data-lucide="chart-spline"></i><span>Rendimiento</span></a>
+      <a href="#gastos" data-view="gastos"><i data-lucide="receipt-text"></i><span>Gastos</span></a>
       <a href="#cuentas" data-view="cuentas"><i data-lucide="wallet-cards"></i><span>Cuentas</span></a>
       <a href="#ajustes" data-view="ajustes"><i data-lucide="settings"></i><span>Ajustes</span></a>
     </nav>
