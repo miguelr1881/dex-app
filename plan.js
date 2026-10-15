@@ -61,7 +61,9 @@ const DexPlan = (() => {
         currencyEffect = decimal(current.usd_value) - decimal(current.amount) * unit / decimal(rate);
       }
       fx += currencyEffect;
-      return {name: entryLabel(current || old), delta, fx: currencyEffect, coverage: !old || !current,
+      return {name: entryLabel(current || old), delta, fx: currencyEffect,
+        coverage: !old || !current || old.currency !== current.currency,
+        investment: ['ibkr', 'binance'].includes((current || old).source),
         projection: (current || old).kind === 'projection'};
     }).sort((firstRow, lastRow) => {
       const firstSize = firstRow.delta < 0n ? -firstRow.delta : firstRow.delta;
@@ -71,17 +73,31 @@ const DexPlan = (() => {
     const deductions = decimal(start.deductions || '0') - decimal(end.deductions || '0');
     const delta = decimal(end.net) - decimal(start.net);
     const accounted = rows.reduce((sum, row) => sum + row.delta, deductions);
+    const causes = {balances: 0n, investments: 0n, projection: 0n, coverage: 0n, fx, deductions, rounding: delta - accounted};
+    rows.forEach(row => {
+      const key = row.coverage ? 'coverage' : row.projection ? 'projection' : row.investment ? 'investments' : 'balances';
+      causes[key] += row.delta - row.fx;
+    });
     return {first: first.date, last: last.date, start: decimal(start.net), end: decimal(end.net), endRate: end.fx?.crc_per_usd, delta, fx,
-      deductions, rows, rounding: delta - accounted};
+      deductions, rows, causes, rounding: delta - accounted};
   }
 
   function comparisonMarkup(result) {
     if (!result) return caption('No hay dos cortes completos comparables en este periodo.');
+    const text = (spanish, english) => I18n.language === 'en' ? english : spanish;
+    const labels = [
+      ['balances', text('Saldo de cuentas', 'Account balances'), text('Cambio sin efecto cambiario; no equivale al ahorro generado.', 'Change excluding FX; not a measure of savings generated.')],
+      ['investments', text('Saldo de inversiones', 'Investment balances'), text('Aportes, retiros y mercado sin separar; no es rentabilidad.', 'Contributions, withdrawals and market effects are not separated; not investment return.')],
+      ['projection', text('Proyecci\u00f3n de planilla', 'Payroll projection'), text('Variaci\u00f3n estimada, no un dep\u00f3sito confirmado.', 'Estimated change, not a confirmed deposit.')],
+      ['coverage', text('Cuentas incorporadas o ausentes', 'Added or missing accounts'), text('Cambio del conjunto observado, no ingreso ni gasto.', 'Change in coverage, not income or spending.')],
+      ['fx', text('Tipo de cambio USD/CRC', 'USD/CRC exchange rate'), text('Revaloraci\u00f3n separada de los saldos.', 'Revaluation separated from balance changes.')],
+      ['deductions', text('Restas patrimoniales', 'Net-worth deductions'), text('Cambio de las restas aplicadas; no confirma un pago de deuda.', 'Change in applied deductions; not a confirmed debt payment.')],
+      ['rounding', text('Redondeo', 'Rounding'), '']
+    ];
     return `<div class="plan-totals">${line('Inicio', value(result.start))}${line('Final', value(result.end))}${line('Cambio neto', value(result.delta))}</div>
-      <h3>Qu\u00e9 movi\u00f3 mi patrimonio</h3><div class="plan-ledger">${result.rows.map(row => `<div class="detail-line"><span data-no-translate>${escapeHTML(row.name)}<small>${row.coverage ? 'Cambio de cobertura' : row.projection ? 'Proyecci\u00f3n de planilla' : 'Cambio de saldo'}</small></span><strong>${value(row.delta)}</strong></div>`).join('')}
-      ${line('Cambio en restas', value(result.deductions))}${line('Redondeo', value(result.rounding))}</div>
-      ${line('Efecto USD/CRC incluido arriba', value(result.fx))}
-      ${caption('Cambio de patrimonio, no rentabilidad. Sin movimientos conciliados no se pueden separar aportes, retiros y ganancias. Las cuentas nuevas o ausentes cambian la cobertura.')}
+      <h3>${text('Qu\u00e9 movi\u00f3 mi patrimonio', 'What changed my net worth')}</h3><div class="plan-ledger plan-causes">${labels.filter(([key]) => result.causes[key] !== 0n).map(([key, label, note]) => `<div class="detail-line" data-worth-cause="${key}"><span>${escapeHTML(label)}${note ? `<small>${escapeHTML(note)}</small>` : ''}</span><strong>${value(result.causes[key])}</strong></div>`).join('') || caption(text('Sin cambio neto entre estos cortes.', 'No net change between these snapshots.'))}${line(text('Total explicado', 'Explained total'), value(result.delta))}</div>
+      <details class="plan-account-changes"><summary>${text('Detalle por cuenta', 'Account detail')}</summary><div class="plan-ledger">${result.rows.map(row => `<div class="detail-line"><span data-no-translate>${escapeHTML(row.name)}<small>${row.coverage ? text('Cambio de cobertura', 'Coverage change') : row.projection ? text('Proyecci\u00f3n de planilla', 'Payroll projection') : text('Cambio de saldo', 'Balance change')}</small></span><strong>${value(row.delta)}</strong></div>`).join('')}${line('Cambio en restas', value(result.deductions))}${line('Redondeo', value(result.rounding))}</div></details>
+      ${caption(text('Ahorro, aportes y rentabilidad: sin atribuci\u00f3n verificada. Los gastos de tarjeta no se restan otra vez del patrimonio.', 'Savings, contributions and returns: no verified attribution. Card spending is not deducted from net worth a second time.'))}
       ${caption('Todo USD con la selecci\u00f3n de fuentes actual. Cada corte conserva su tipo de cambio; no se rellenan fechas sin datos.')}`;
   }
 
