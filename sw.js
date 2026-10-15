@@ -1,9 +1,15 @@
 'use strict';
-const CACHE = 'dex-pages-shell-0.9.0-expenses4';
+const CACHE = 'dex-pages-shell-0.9.0-expenses5';
 const IMAGES = 'dex-pages-images-v1';
 const SHELL = ["./", "./index.html", "./portal.css", "./manifest.webmanifest", "./brand-ibkr.png", "./dex.css", "./app.js", "./plan.js", "./expenses.js", "./native.js", "./i18n.js", "./sheets-reader.js", "./snapshot.js", "./portal.js", "./icons.js", "./brand-bac.svg", "./brand-multimoney.svg", "./brand-binance.svg", "./icon.png", "./icon-512.png", "./apple-touch-icon.png"].map(path => new URL(path, self.registration.scope).href);
 const INDEX = new URL('./index.html', self.registration.scope).href;
-self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL))));
+self.addEventListener('install', event => event.waitUntil(caches.open(CACHE).then(cache => Promise.all(SHELL.map(async path => {
+    const revision = new URL(path);
+    revision.searchParams.set('dex-build', CACHE);
+    const response = await fetch(revision.href, {cache: 'reload'});
+    if (!response.ok) throw new Error('Shell download failed');
+    await cache.put(path, response);
+})))));
 self.addEventListener('activate', event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith('dex-pages-shell-') && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener('message', event => { if (event.data?.type === 'SKIP_WAITING') self.skipWaiting(); });
 self.addEventListener('fetch', event => {

@@ -2,7 +2,7 @@
   "files_sha256": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "LUCIDE-LICENSE": "1e7290b35280a048667bbf0ebabac1c7fd52a75300e8b2946ac165715997f2bc",
-    "README.md": "66cbb269815118690c0fda9f48cbac0ddca6a1b66602dac7c9d72a2f2e6bfb0d",
+    "README.md": "40de91b304e291ba70520f43309745852f7bc39b5ab6e8e4012293a0b84d6a9a",
     "app.js": "6bdc30d926317c1af4f95cd398db703c4c64865046a063d0cb5fe3f2c0786c97",
     "apple-touch-icon.png": "019b1971f80a357bb47f645499ed3dca007e6df48891203bba4dbc397c21914c",
     "brand-bac.svg": "32493e55da7ac457658c384a78286699e898a62669c54dad2b9f674a3376e744",
@@ -17,7 +17,7 @@
     "icon-maskable-512.png": "b57c8139e290bf2eb359ec7603a88a25221bb6b42b836f295fe6dba63d4372c1",
     "icon.png": "ed556b6aa6225550bbbb3b75323963e84db6ac2ca47171f0d03d2ae89fd0371b",
     "icons.js": "b7796e58bbbe3d6b4ae203525d7045daa4bf2f1e347aa53124e4c520eefd6282",
-    "index.html": "8365bb7688ff4c20ba643c37ff9908d32dcb80d339d0c4c9f24c6223e9b12473",
+    "index.html": "17dc51bf831fdd4bafa1d643908f2414c4e2cda8167c8e87895628fe2d5042ce",
     "manifest.webmanifest": "0c5eb00981062e234584ac994ff48d9e315b2a272cafa0aac39361dd13609212",
     "native.js": "678e1dfe96c0d1af7d79c02f0ac1d2ddc627da5ae83189f491fc3a93b1cc3734",
     "plan.js": "a6fa0dacc75f59fa976e538894ff810dfab3f5d0581fc818eace1b9451314757",
@@ -73,7 +73,7 @@
     "splash/launch-640x1136.png": "f7227801c0137bb34ce57c54c1f910bab05320cdb14798a05f691e7ad56a37e0",
     "splash/launch-750x1334.png": "79b396f28790e7e0b86f5ef0f4cfea41e38433fe8c9cf96d723a8e424acbee16",
     "splash/launch-828x1792.png": "2a16d11dff970a9e5466f0acf785ad1db27c49a369f58dce1c16ecfb6c6ad7de",
-    "sw.js": "718f8fc2e0c101322bb1dee5c6672015b7ddce42a5ac5f28e9f7ddc2c7c2e1fc"
+    "sw.js": "672bdfd692248b5ea4aaf33c3d797090359e92cf4fac9dcaf013d53f3be64291"
   },
   "contains_private_data": false,
   "scope": "interface_only"
