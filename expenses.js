@@ -247,7 +247,7 @@ const DexExpenses = (() => {
     const container = select('#expense-results');
     if (!container) return;
     const root = select('#expenses-content');
-    const nextLayout = JSON.stringify([month, denomination, mode, I18n.language, root.clientWidth]);
+    const nextLayout = JSON.stringify([month, denomination, mode, I18n.language]);
     if (nextLayout !== layoutKey) {
       root.style.minHeight = '';
       layoutKey = nextLayout;
