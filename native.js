@@ -199,6 +199,7 @@ const DexNative = (() => {
     if (!reduced() && offset) sheetAnimation = dialog.animate([{transform: `translateY(${offset}px)`}, {transform: 'translateY(0)'}], {duration: 480, easing: SPRING});
   }
   dialog.addEventListener('touchstart', event => {
+    if (event.target.closest('#expense-monthly-chart')) { drag = null; return; }
     if (dialog.querySelector('.perspective-body') && (!event.target.closest('.sheet-grabber, .sheet-header') || event.target.closest('button, input, select, textarea'))) { drag = null; return; }
     if (event.touches.length === 1) dragStart(event.touches[0].clientY, !!event.target.closest('.sheet-grabber, .sheet-header'));
   }, {passive: true});

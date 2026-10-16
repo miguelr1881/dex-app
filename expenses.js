@@ -144,7 +144,7 @@ const DexExpenses = (() => {
   }
   function selectMonthlyPoint(index) {
     if (!monthlyModel || hiddenAmounts) return;
-    const {chart, context, image, points, currencies, scale, height, width, positions, colors} = monthlyModel;
+    const {chart, context, image, points, currencies, scale, height, bars, colors} = monthlyModel;
     index = Math.max(0, Math.min(points.length - 1, index));
     const point = points[index];
     monthlyModel.index = index;
@@ -153,13 +153,13 @@ const DexExpenses = (() => {
     context.save(); context.setTransform(scale, 0, 0, scale, 0, 0);
     context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--chart-guide');
     context.lineWidth = 1;
-    const horizontal = points.length === 1 ? width / 2 : 18 + index / (points.length - 1) * (width - 36);
+    const horizontal = bars[0][index].horizontal;
     context.beginPath(); context.moveTo(horizontal, 4); context.lineTo(horizontal, height - 4); context.stroke();
     currencies.forEach((unit, lane) => {
-      const position = positions[lane][index];
-      if (position == null) return;
-      context.fillStyle = colors[lane]; context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg'); context.lineWidth = 3;
-      context.beginPath(); context.arc(horizontal, position, 5, 0, Math.PI * 2); context.fill(); context.stroke();
+      const bar = bars[lane][index];
+      if (bar.value == null) return;
+      context.fillStyle = colors[lane];
+      context.fillRect(bar.horizontal - bar.width / 2, Math.min(bar.vertical, bar.zero), bar.width, Math.max(2, Math.abs(bar.vertical - bar.zero)));
     });
     context.restore();
     select('#expense-monthly-date').textContent = monthName(point.month);
@@ -170,6 +170,7 @@ const DexExpenses = (() => {
       const delta = comparable ? value - previous.values[unit] : null;
       return `<span><strong class="sensitive">${value == null ? '\u2014' : money(decimalString(value), unit)}</strong><small>${escapeHTML(monthlyStatus(point, unit))}</small><small>${delta == null ? '' : `${delta > 0n ? '+' : ''}${money(decimalString(delta), unit)} ${text('vs. mes anterior', 'vs. previous month')}`}</small></span>`;
     }).join('');
+    all('#expense-monthly-values strong').forEach(node => fitMoney(node, currencies.length > 1 ? 22 : 28));
     const open = select('#expense-monthly-open');
     open.disabled = point.withheld || currencies.every(unit => point.values[unit] == null);
     open.setAttribute('aria-label', `${text('Ver movimientos de', 'View transactions for')} ${monthName(point.month)}`);
@@ -180,46 +181,61 @@ const DexExpenses = (() => {
     const chart = select('#expense-monthly-chart');
     if (!chart || !chart.clientWidth || hiddenAmounts || !monthlyModel?.points.length) return;
     const {points, currencies} = monthlyModel;
-    const width = chart.clientWidth, height = 220, scale = Math.min(devicePixelRatio || 1, 3);
+    const width = chart.clientWidth, height = currencies.length > 1 ? 360 : 248, scale = Math.min(devicePixelRatio || 1, 3);
     chart.width = Math.round(width * scale); chart.height = Math.round(height * scale);
     const context = chart.getContext('2d'); context.scale(scale, scale);
     const theme = getComputedStyle(document.documentElement);
-    const colors = [theme.getPropertyValue('--tint').trim(), labels.transport[3]];
-    const positions = [];
+    const colors = [theme.getPropertyValue('--tint').trim(), theme.getPropertyValue('--blue').trim() || labels.transport[3]];
+    const bars = [];
+    const left = 44, right = width - 10, stride = (right - left) / points.length;
+    const labelStep = Math.max(1, Math.ceil(points.length / Math.max(2, Math.floor((right - left) / 42))));
+    const monthLabel = new Intl.DateTimeFormat(I18n.locale, {month: 'short', timeZone: 'UTC'});
     currencies.forEach((unit, lane) => {
       const amounts = points.map(point => point.values[unit]).filter(value => value != null);
       const minimum = amounts.reduce((first, second) => first < second ? first : second, 0n);
-      const maximum = amounts.reduce((first, second) => first > second ? first : second, 0n);
+      let maximum = amounts.reduce((first, second) => first > second ? first : second, 0n);
+      if (maximum === minimum) maximum = minimum + decimal('1');
       const range = maximum - minimum;
-      const laneHeight = height / currencies.length, top = lane * laneHeight + 26, bottom = (lane + 1) * laneHeight - 16;
-      const vertical = value => range === 0n ? (top + bottom) / 2 : top + Number((maximum - value) * 10000n / range) / 10000 * (bottom - top);
-      context.font = `500 11px ${theme.getPropertyValue('--font-body') || 'sans-serif'}`;
+      const laneHeight = height / currencies.length, top = lane * laneHeight + 28, bottom = (lane + 1) * laneHeight - 28;
+      const vertical = value => top + Number((maximum - value) * 10000n / range) / 10000 * (bottom - top);
+      context.font = `500 11px ${getComputedStyle(chart).fontFamily}`;
       context.fillStyle = theme.getPropertyValue('--label-2');
       context.textAlign = 'left'; context.fillText(unit, 2, lane * laneHeight + 13);
-      context.textAlign = 'right';
-      if (amounts.length) context.fillText(new Intl.NumberFormat(I18n.locale, {notation: 'compact', maximumFractionDigits: 1}).format(Number(decimalString(maximum))), width - 2, lane * laneHeight + 13);
-      context.save(); context.setLineDash([2, 5]); context.strokeStyle = theme.getPropertyValue('--chart-guide'); context.lineWidth = 1;
-      context.beginPath(); context.moveTo(0, vertical(0n)); context.lineTo(width, vertical(0n)); context.stroke(); context.restore();
-      context.strokeStyle = colors[lane]; context.fillStyle = colors[lane]; context.lineWidth = 2.4; context.lineJoin = 'round'; context.lineCap = 'round';
-      const lanePositions = points.map(point => point.values[unit] == null ? null : vertical(point.values[unit]));
-      positions.push(lanePositions);
-      points.forEach((point, index) => {
-        const position = lanePositions[index];
-        if (position == null) return;
-        const horizontal = points.length === 1 ? width / 2 : 18 + index / (points.length - 1) * (width - 36);
-        if (index && lanePositions[index - 1] != null) {
-          context.save(); if (!point.complete[unit] || !points[index - 1].complete[unit]) context.setLineDash([4, 4]);
-          context.beginPath(); context.moveTo(18 + (index - 1) / (points.length - 1) * (width - 36), lanePositions[index - 1]); context.lineTo(horizontal, position); context.stroke(); context.restore();
+      const levels = [...new Set([maximum, minimum + range / 2n, minimum, 0n])];
+      levels.forEach(level => {
+        context.strokeStyle = theme.getPropertyValue('--chart-guide'); context.lineWidth = 1;
+        context.beginPath(); context.moveTo(left, vertical(level)); context.lineTo(right, vertical(level)); context.stroke();
+        if (amounts.length && (level === minimum || level === maximum || level === 0n)) {
+          context.textAlign = 'right';
+          context.fillText(new Intl.NumberFormat(I18n.locale, {notation: 'compact', maximumFractionDigits: 1}).format(Number(decimalString(level))), left - 7, vertical(level) + 4, left - 9);
         }
-        context.beginPath(); context.arc(horizontal, position, 3, 0, Math.PI * 2);
-        if (point.complete[unit]) context.fill(); else context.stroke();
+      });
+      const laneBars = points.map((point, index) => ({value: point.values[unit], horizontal: left + (index + .5) * stride,
+        vertical: point.values[unit] == null ? null : vertical(point.values[unit]), zero: vertical(0n), width: Math.min(28, stride * .62)}));
+      bars.push(laneBars);
+      laneBars.forEach((bar, index) => {
+        if (bar.value != null) {
+          context.fillStyle = colors[lane]; context.globalAlpha = .62;
+          context.fillRect(bar.horizontal - bar.width / 2, Math.min(bar.vertical, bar.zero), bar.width, Math.max(2, Math.abs(bar.vertical - bar.zero)));
+          context.globalAlpha = 1;
+          if (!points[index].complete[unit]) {
+            context.strokeStyle = colors[lane]; context.lineWidth = 1; context.setLineDash([2, 2]);
+            context.strokeRect(bar.horizontal - bar.width / 2, Math.min(bar.vertical, bar.zero), bar.width, Math.max(2, Math.abs(bar.vertical - bar.zero)));
+            context.setLineDash([]);
+          }
+        }
+        if (index === 0 || index === points.length - 1 || index % labelStep === 0 && index < points.length - labelStep) {
+          context.textAlign = 'center'; context.fillStyle = theme.getPropertyValue('--label-2');
+          context.fillText(monthLabel.format(new Date(points[index].month + '-01T12:00:00Z')), bar.horizontal, bottom + 20);
+        }
       });
     });
-    Object.assign(monthlyModel, {chart, context, width, height, scale, positions, colors, image: context.getImageData(0, 0, chart.width, chart.height)});
+    Object.assign(monthlyModel, {chart, context, width, height, scale, bars, colors, image: context.getImageData(0, 0, chart.width, chart.height)});
     const selected = points.findIndex(point => point.month === monthlySelection);
     selectMonthlyPoint(selected < 0 ? points.length - 1 : selected);
   }
   function openMonthlyMonth(key) {
+    closeDetail();
     changeMonth(key);
     select('#expense-month').focus({preventScroll: true});
     select('.expense-month-control').scrollIntoView({block: 'start', behavior: DexNative.reduced() ? 'instant' : 'smooth'});
@@ -237,6 +253,16 @@ const DexExpenses = (() => {
     const note = hiddenAmounts ? text('Importes ocultos', 'Amounts hidden') : monthlyCurrency === 'separate' ? text('Importes en moneda original.', 'Amounts in original currency.') : rate ? `${text('Conversi\u00f3n estimada', 'Estimated conversion')} \u00b7 1 USD = ${money(decimalString(rate), 'CRC')} \u00b7 ${escapeHTML(date)}. ${text('No es el cambio hist\u00f3rico.', 'Not the historical rate.')} ${fx.state === 'stale' ? text('Cambio pendiente de actualizar.', 'Exchange rate awaiting update.') : ''}` : text('Tipo de cambio no disponible. Conversi\u00f3n pendiente.', 'Exchange rate unavailable. Conversion pending.');
     root.innerHTML = `<div class="section-heading"><h2>${text('Gastos mensuales', 'Monthly spending')}</h2></div><div class="segmented expense-monthly-currency" role="group" aria-label="${text('Moneda de la gr\u00e1fica', 'Chart currency')}">${[['USD',text('Todo USD','All USD')],['CRC',text('Todo CRC','All CRC')],['separate',text('Separado','Separate')]].map(([key,label]) => `<button type="button" data-expense-monthly-currency="${key}" aria-pressed="${monthlyCurrency === key}">${label}</button>`).join('')}</div><div class="expense-monthly-readout"><div class="expense-monthly-date"><span id="expense-monthly-date"></span>${button(text('Ver movimientos del mes', 'View month transactions'), 'arrow-up-right', 'id="expense-monthly-open" disabled')}</div><div id="expense-monthly-values"></div></div><div class="expense-monthly-plot"><canvas id="expense-monthly-chart" role="slider" tabindex="0" aria-label="${text('Gastos mensuales', 'Monthly spending')}" aria-valuemin="0" aria-valuemax="${Math.max(0,points.length - 1)}" aria-valuenow="0" ${hiddenAmounts || !available ? 'hidden' : ''}></canvas><p class="subtle" ${!hiddenAmounts && available ? 'hidden' : ''}>${text(hiddenAmounts ? 'Importes ocultos' : 'Sin datos en este intervalo', hiddenAmounts ? 'Amounts hidden' : 'No data in this range')}</p></div><div class="chart-range">${points.length ? [points[0], points.at(-1)].map(point => `<time datetime="${point.month}">${escapeHTML(shortDate(point.month))}</time>`).join('') : ''}</div><div class="period-chips" role="group" aria-label="${text('Intervalo de gastos', 'Spending range')}">${[['3','3M'],['6','6M'],['12','1A'],['all',text('Todo','All')]].map(([key,label]) => `<button type="button" data-expense-monthly-period="${key}" aria-pressed="${monthlyPeriod === key}">${I18n.language === 'en' && key === '12' ? '1Y' : label}</button>`).join('')}</div><p class="expense-monthly-note subtle">${note}${!hiddenAmounts && monthlyCurrency !== 'separate' && rate ? ' <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">Exchange Rate API</a>' : ''}</p><details class="disclosure expense-monthly-observations" ${hiddenAmounts ? 'hidden' : ''}><summary>${text('Meses', 'Months')}</summary><div class="expense-monthly-rows">${points.map(point => `<button type="button" data-expense-monthly-open="${point.month}" ${point.withheld || currencies.every(unit => point.values[unit] == null) ? 'disabled' : ''}><span>${escapeHTML(shortDate(point.month))}</span><span>${currencies.map(unit => `<strong class="sensitive">${point.values[unit] == null ? '\u2014' : money(decimalString(point.values[unit]), unit)}</strong><small>${escapeHTML(monthlyStatus(point, unit))}</small>`).join('')}</span>${icon('chevron-right')}</button>`).join('')}</div></details>`;
     root.querySelector('.segmented').style.setProperty('--index', ['USD','CRC','separate'].indexOf(monthlyCurrency));
+    root.dataset.mode = monthlyCurrency;
+    root.querySelector('.section-heading').remove();
+    if (!hiddenAmounts && monthlyCurrency !== 'separate' && rate) {
+      const note = root.querySelector('.expense-monthly-note');
+      const disclosure = document.createElement('details');
+      disclosure.className = 'expense-fx-detail';
+      disclosure.innerHTML = `<summary>${text('Conversi\u00f3n estimada', 'Estimated conversion')} \u00b7 ${escapeHTML(date)}</summary>`;
+      note.replaceWith(disclosure);
+      disclosure.append(note);
+    }
     root.querySelectorAll('[data-expense-monthly-currency], [data-expense-monthly-period]').forEach(control => control.addEventListener('click', () => {
       if (control.dataset.expenseMonthlyCurrency) monthlyCurrency = control.dataset.expenseMonthlyCurrency;
       else monthlyPeriod = control.dataset.expenseMonthlyPeriod;
@@ -250,7 +276,10 @@ const DexExpenses = (() => {
     const atPointer = event => {
       if (!monthlyModel?.image) return;
       const bounds = chart.getBoundingClientRect();
-      selectMonthlyPoint(Math.round((event.clientX - bounds.left - 18) / Math.max(1, bounds.width - 36) * (points.length - 1)));
+      const horizontal = event.clientX - bounds.left;
+      let nearest = 0;
+      monthlyModel.bars[0].forEach((bar, index) => { if (Math.abs(bar.horizontal - horizontal) < Math.abs(monthlyModel.bars[0][nearest].horizontal - horizontal)) nearest = index; });
+      selectMonthlyPoint(nearest);
     };
     chart.addEventListener('pointerdown', event => { if (event.isPrimary === false) return; origin = {horizontal:event.clientX, vertical:event.clientY}; if (event.pointerType === 'mouse') atPointer(event); });
     chart.addEventListener('pointermove', event => {
@@ -358,10 +387,13 @@ const DexExpenses = (() => {
     fitTotal();
   }
   function fitTotal() {
-    const total = select('#expense-total');
-    if (!total || !total.clientWidth) return;
-    total.style.fontSize = '26px';
-    for (let size = 25; total.scrollWidth > total.clientWidth && size >= 10; size--) total.style.fontSize = `${size}px`;
+    fitMoney(select('#expense-total'), 32);
+    fitMoney(select('.expense-distribution-total strong'), 24);
+  }
+  function fitMoney(node, maximum) {
+    if (!node || !node.clientWidth) return;
+    node.style.fontSize = `${maximum}px`;
+    for (let size = maximum - 1; node.scrollWidth > node.clientWidth && size >= 12; size--) node.style.fontSize = `${size}px`;
   }
   function resetGroup() {
     selection = null;
@@ -395,7 +427,7 @@ const DexExpenses = (() => {
       {opacity: .65, transform: 'translateY(4px)'}, {opacity: 1, transform: 'translateY(0)'}
     ], {duration: 200, easing: 'ease-out'})];
   }
-  function paintChart() {
+  function paintChart(onSelect = null) {
     const canvas = select('#expense-ring');
     if (!canvas) return;
     const size = 264;
@@ -419,7 +451,7 @@ const DexExpenses = (() => {
         const gap = Math.min(.055, angle * .18);
         const sweep = angle - gap;
         if (sweep > .002) {
-          context.globalAlpha = selection?.mode === 'categories' && selection.key !== group.key ? .22 : 1;
+          context.globalAlpha = !onSelect && selection?.mode === 'categories' && selection.key !== group.key ? .22 : 1;
           context.strokeStyle = category(group.key)[3];
           context.lineWidth = 17;
           context.lineCap = 'butt';
@@ -441,7 +473,7 @@ const DexExpenses = (() => {
         cursor += Number(item.total * 1000000n / total) / 1000000 * Math.PI * 2;
         return angle <= cursor;
       });
-      if (group) selectGroup(group.key, 'categories', true);
+      if (group) { if (onSelect) onSelect(group.key); else selectGroup(group.key, 'categories', true); }
     };
   }
   function enter(direction = 0, summary = true) {
@@ -518,7 +550,7 @@ const DexExpenses = (() => {
       month = available.includes(previous.toISOString().slice(0, 7)) ? previous.toISOString().slice(0, 7) : available.at(-1);
     }
     const nextKey = JSON.stringify([value, month, denomination, selectedCards, sourceScope, snapshot?.total_usd?.fx, hiddenAmounts, I18n.language, getComputedStyle(document.documentElement).getPropertyValue('--fill-2')]);
-    if (nextKey === renderKey && select('#expense-ring')) return;
+    if (nextKey === renderKey && select('#expense-total')) return;
     renderKey = nextKey;
     entranceAnimations.forEach(animation => animation.cancel());
     entranceAnimations = [];
@@ -547,8 +579,9 @@ const DexExpenses = (() => {
       }));
       all('[data-expense-card]').forEach(control => { control.disabled = sourceScope === 'bank'; });
     }
-    select('.expense-overview').insertAdjacentHTML('afterend', `<section id="expense-monthly" class="expense-monthly" aria-label="${text('Gastos mensuales', 'Monthly spending')}"></section>`);
-    renderMonthly(value);
+    select('#expenses-content #expense-ring').remove();
+    select('.expense-analysis').innerHTML = `<button type="button" id="expense-analysis-open">${icon('chart-no-axes-combined')}<span>${text('An\u00e1lisis', 'Analysis')}</span>${icon('chevron-right')}</button>`;
+    select('.expense-overview').append(select('.expense-analysis'));
     const unknown = bankRows(value).filter(row => row.classification === 'unidentified');
     if (unknown.length) select('.expense-ledger').insertAdjacentHTML('afterbegin', `<button type="button" id="expense-unidentified" class="expense-unidentified">${icon('circle-help')}<span>${unknown.length} ${text('por confirmar', 'unconfirmed')}</span><strong class="sensitive">${amount(sum(unknown))}</strong>${icon('chevron-right')}</button>`);
     if (select('#expense-unidentified')) select('#expense-unidentified').addEventListener('click', event => openDetail('expense', {coverage: true}, event.currentTarget));
@@ -589,8 +622,10 @@ const DexExpenses = (() => {
     });
     select('#expense-coverage').addEventListener('click', event => openDetail('expense', {coverage: true}, event.currentTarget));
     select('#expense-reset').addEventListener('click', resetGroup);
-    select('#expense-compare').addEventListener('click', event => openDetail('expense', {compare: true}, event.currentTarget));
-    select('#expense-recurring').addEventListener('click', event => openDetail('expense', {recurring: true}, event.currentTarget));
+    select('#expense-analysis-open').addEventListener('click', event => {
+      event.currentTarget.focus({preventScroll: true});
+      openDetail('expense', {analysis: true}, event.currentTarget);
+    });
     renderList(value);
     updateCenter();
     fitTotal();
@@ -616,7 +651,26 @@ const DexExpenses = (() => {
     const value = data();
     const container = select('#detail-content');
     select('#detail-eyebrow').textContent = text('GASTOS', 'SPENDING');
-    if (selection.months) {
+    if (selection.analysis) {
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('An\u00e1lisis', 'Analysis')}</h2></div><div class="expense-analysis-menu">${[['monthly', text('Gastos mensuales', 'Monthly spending'), 'chart-no-axes-combined'], ['compare', text('Comparar periodos', 'Compare periods'), 'arrow-left-right'], ['recurring', text('Recurrentes', 'Recurring'), 'repeat']].map(([key, label, glyph]) => `<button type="button" id="expense-${key}" data-expense-analysis="${key}">${icon(glyph)}<span>${label}</span>${icon('chevron-right')}</button>`).join('')}</div>`;
+      select('.expense-analysis-menu').insertAdjacentHTML('afterbegin', `<button type="button" id="expense-distribution" data-expense-analysis="distribution">${icon('chart-pie')}<span>${text('Por categor\u00eda', 'By category')}</span>${icon('chevron-right')}</button>`);
+      container.querySelectorAll('[data-expense-analysis]').forEach(control => control.addEventListener('click', () => openDetail('expense', {[control.dataset.expenseAnalysis]: true}, control)));
+    } else if (selection.distribution) {
+      const rows = rowsFor(value);
+      const groups = grouped(rows, 'categories');
+      const positive = groups.reduce((total, group) => total + (group.total > 0n ? group.total : 0n), 0n);
+      const net = sum(rows);
+      chartGroups = groups;
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Por categor\u00eda', 'By category')}</h2></div><p class="subtle">${escapeHTML(monthName(month))} \u00b7 ${denomination}</p><div class="expense-distribution-chart"><canvas id="expense-ring" width="264" height="264" role="img" aria-label="${text(hiddenAmounts ? 'Importes ocultos' : 'Distribuci\u00f3n de gastos positivos por categor\u00eda', hiddenAmounts ? 'Amounts hidden' : 'Positive spending distribution by category')}"></canvas><div class="expense-distribution-total"><span class="caption">${positive !== net ? text('Importes positivos', 'Positive amounts') : text('Gasto estimado', 'Estimated spending')}</span><strong class="sensitive">${amount(positive)}</strong></div></div>${positive !== net ? `<div class="expense-distribution-refunds">${line(text('Categor\u00edas con devoluci\u00f3n neta', 'Categories with net refunds'), amount(net - positive))}${line(text('Gasto neto', 'Net spending'), amount(net))}</div>` : ''}<div class="expense-distribution-list">${groups.map(group => `<button type="button" data-expense-distribution-group="${escapeHTML(group.key)}"><span class="expense-symbol" data-category="${escapeHTML(group.key)}">${icon(category(group.key)[2])}</span><span>${escapeHTML(categoryName(group.key))}<small>${hiddenAmounts || group.total <= 0n || !positive ? '' : (Number(group.total * 1000n / positive) / 10).toLocaleString(I18n.locale) + '%'}</small></span><strong class="sensitive">${amount(group.total)}</strong>${icon('chevron-right')}</button>`).join('')}</div>`;
+      const openGroup = (key, source = select('#expense-ring')) => openDetail('expense', {group: key, mode: 'categories', unfiltered: true, back: {distribution: true}}, source);
+      if (positive === net && !rows.some(row => row.classification === 'unidentified')) select('.expense-distribution-total .caption').textContent = text('Gasto registrado', 'Recorded spending');
+      container.querySelectorAll('[data-expense-distribution-group]').forEach(control => control.addEventListener('click', () => openGroup(control.dataset.expenseDistributionGroup, control)));
+      paintChart(openGroup);
+      fitTotal();
+    } else if (selection.monthly) {
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Gastos mensuales', 'Monthly spending')}</h2></div><section id="expense-monthly" class="expense-monthly" aria-label="${text('Gastos mensuales', 'Monthly spending')}"></section>`;
+      renderMonthly(value);
+    } else if (selection.months) {
       const available = months(value);
       const options = [...new Set(available.map(key => key.slice(0, 4)))].reverse().flatMap(year => [year, ...available.filter(key => key.startsWith(year)).reverse()]);
       container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Periodo de gastos', 'Spending period')}</h2></div><div class="expense-month-options">${options.map(key => `<button type="button" class="expense-month-choice" data-expense-month-option="${key}" aria-pressed="${key === month}">${escapeHTML(monthName(key))}${key.length === 4 ? ` <span class="subtle">\u00b7 ${text('Acumulado', 'Year total')}</span>` : ''}</button>`).join('')}</div>`;
@@ -658,6 +712,16 @@ const DexExpenses = (() => {
       const name = selection.mode === 'categories' ? categoryName(selection.group) : selection.group;
       container.innerHTML = `<div class="detail-heading"><h2 id="detail-title" data-no-translate>${escapeHTML(name)}</h2></div><p class="subtle">${escapeHTML(monthName(month))} \u00b7 ${denomination}</p><div class="expense-detail-total sensitive">${amount(sum(rows))}</div>${transactionRows(rows)}`;
       bindDetails(container, selection);
+      if (selection.back?.distribution) {
+        container.insertAdjacentHTML('afterbegin', button(text('Volver a categor\u00edas', 'Back to categories'), 'chevron-left', 'id="expense-distribution-back"'));
+        select('#expense-distribution-back').addEventListener('click', event => openDetail('expense', {distribution: true}, event.currentTarget));
+      }
+    }
+    if (selection.monthly || selection.distribution || selection.compare || selection.recurring) {
+      const heading = container.querySelector('.detail-heading');
+      heading.classList.add('expense-analysis-heading');
+      heading.insertAdjacentHTML('afterbegin', button(text('Volver a an\u00e1lisis', 'Back to analysis'), 'chevron-left', 'id="expense-analysis-back"'));
+      select('#expense-analysis-back').addEventListener('click', event => openDetail('expense', {analysis: true}, event.currentTarget));
     }
   }
   window.addEventListener('resize', () => {
