@@ -1,6 +1,7 @@
 'use strict';
 
 const DexExpenses = (() => {
+  const firstMonth = '2026-01';
   let month = '';
   let denomination = 'CRC';
   let mode = 'categories';
@@ -10,6 +11,7 @@ const DexExpenses = (() => {
   let entranceAnimations = [];
   let selection = null;
   let selectedCards = [];
+  let sourceScope = 'all';
   let cardsInitialized = false;
   let renderKey = '';
   let layoutKey = '';
@@ -40,7 +42,7 @@ const DexExpenses = (() => {
   const sum = rows => rows.reduce((total, row) => total + decimal(row.amount), 0n);
   const category = key => labels[key] || labels.other;
   const categoryName = key => category(key)[I18n.language === 'en' ? 1 : 0];
-  const monthName = key => new Intl.DateTimeFormat(I18n.locale, {month: 'long', year: 'numeric', timeZone: 'UTC'}).format(new Date(key + '-01T12:00:00Z'));
+  const monthName = key => key.length === 4 ? key : new Intl.DateTimeFormat(I18n.locale, {month: 'long', year: 'numeric', timeZone: 'UTC'}).format(new Date(key + '-01T12:00:00Z'));
   const button = (label, glyph, attrs = '') => `<button type="button" class="icon-button plain" aria-label="${escapeHTML(label)}" title="${escapeHTML(label)}" ${attrs}>${icon(glyph)}</button>`;
   function data() {
     const value = snapshot?.expenses;
@@ -58,7 +60,7 @@ const DexExpenses = (() => {
     if (!keys.length) return [];
     const last = keys.sort().at(-1);
     const result = [];
-    let cursor = keys[0];
+    let cursor = keys[0] < firstMonth ? firstMonth : keys[0];
     while (cursor <= last && result.length < 240) {
       result.push(cursor);
       const next = new Date(cursor + '-01T12:00:00Z');
@@ -86,11 +88,30 @@ const DexExpenses = (() => {
   function cardName(card, index = 0) {
     return card?.last4 ? '\u2022\u2022 ' + card.last4 : text('Tarjeta ', 'Card ') + (index + 1);
   }
+  function selectedSources(value) {
+    return [...(sourceScope === 'bank' ? [] : selectedCards), ...(sourceScope === 'cards' ? [] : (value.bank_accounts || []).filter(account => account.currency === denomination).map(account => account.id))];
+  }
+  function sourceName(value, identifier) {
+    const account = (value.bank_accounts || []).find(item => item.id === identifier);
+    return account ? `${account.issuer} ${account.currency} \u2022\u2022 ${account.last4}` : cardName(cardsFor(value).find(card => card.id === identifier));
+  }
   function rowsFor(value, card = null) {
-    return value.transactions.filter(row => (card ? row.card_id === card : selectedCards.includes(row.card_id)) && row.date.startsWith(month) && row.currency === denomination && ['purchase', 'tax', 'fee', 'refund'].includes(row.kind));
+    const sources = selectedSources(value);
+    return value.transactions.filter(row => (card ? row.card_id === card : sources.includes(row.card_id)) && row.date.startsWith(month) && row.currency === denomination && ['purchase', 'tax', 'fee', 'refund'].includes(row.kind));
+  }
+  function bankRows(value) {
+    const sources = selectedSources(value);
+    return (value.bank_outflows || []).filter(row => sources.includes(row.card_id) && row.date.startsWith(month) && row.currency === denomination);
+  }
+  function bankBreakdown(value) {
+    const rows = bankRows(value);
+    if (!rows.length) return '';
+    const unknown = rows.filter(row => row.classification === 'unidentified');
+    const labels = [['expense', text('Gastos identificados', 'Identified spending')], ['unidentified', text('Incluidos por confirmar', 'Included, unconfirmed')], ['own_transfer', text('Entre mis cuentas \u00b7 excluido', 'Own transfers \u00b7 excluded')], ['card_payment', text('Pagos de tarjeta \u00b7 excluido', 'Card payments \u00b7 excluded')], ['investment', text('Inversiones \u00b7 excluido', 'Investments \u00b7 excluded')]];
+    return `<section class="expense-explanation"><h3>${text('Transferencias y cuentas', 'Transfers and accounts')}</h3>${labels.map(([key, label]) => { const items = rows.filter(row => row.classification === key); return items.length ? line(label, amount(sum(items))) : ''; }).join('')}${rows.some(row => row.card_statement_missing) ? `<p class="subtle">${text('Hay pagos de tarjetas sin estado recibido. Se excluyen los pagos; falta cobertura de sus compras.', 'Some card payments have no matching statement. Payments are excluded; their purchases are not fully covered.')}</p>` : ''}${unknown.length ? `<p class="subtle">${text('Estas salidas s\u00ed est\u00e1n incluidas en el total estimado. El estado no permite confirmar su destino o prop\u00f3sito.', 'These outflows are included in the estimated total. The statement does not establish their destination or purpose.')}</p><details class="expense-insight"><summary><span>${text('Destino por confirmar', 'Destination unconfirmed')}</span><strong>${unknown.length}</strong>${icon('chevron-down')}</summary>${transactionRows(unknown)}</details>` : ''}</section>`;
   }
   function reviewMarkup(value) {
-    const insights = (value.insights || []).filter(item => item.kind !== 'recurring_payment' && item.date.startsWith(month) && item.currency === denomination && selectedCards.includes(item.card_id));
+    const insights = (value.insights || []).filter(item => item.kind !== 'recurring_payment' && item.date.startsWith(month) && item.currency === denomination && selectedSources(value).includes(item.card_id));
     if (!insights.length) return '';
     return `<details class="expense-reviews" id="expense-reviews"><summary>${icon('circle-alert')}<span>${text('Para revisar', 'To review')}</span><strong>${insights.length}</strong>${icon('chevron-down')}</summary><div>${insights.map(item => {
       const increased = item.kind === 'recurring_increase';
@@ -111,13 +132,27 @@ const DexExpenses = (() => {
     return [...groups.values()].sort((first, second) => first.total > second.total ? -1 : first.total < second.total ? 1 : first.key.localeCompare(second.key));
   }
   function compareMonths(value, currentMonth, currency, cards) {
-    const previous = new Date(currentMonth + '-01T12:00:00Z');
+    const previous = new Date((currentMonth.length === 4 ? currentMonth + '-01' : currentMonth) + '-01T12:00:00Z');
     previous.setUTCMonth(previous.getUTCMonth() - 1);
-    const previousMonth = previous.toISOString().slice(0, 7);
-    if ([currentMonth, previousMonth].some(key => (value.withheld_months || []).includes(key) || !coverage(value.statements, key, cards))) return null;
-    const total = key => sum(value.transactions.filter(row => cards.includes(row.card_id) && row.date.startsWith(key) && row.currency === currency && ['purchase', 'tax', 'fee', 'refund'].includes(row.kind)));
-    const current = total(currentMonth), prior = total(previousMonth);
-    return {current, prior, delta: current - prior, previousMonth};
+    const previousMonth = previous.toISOString().slice(0, currentMonth.length);
+    if ([currentMonth, previousMonth].some(key => key.slice(0, 4) < firstMonth.slice(0, 4))) return null;
+    if ([currentMonth, previousMonth].some(key => (value.withheld_months || []).some(withheld => withheld.startsWith(key)) || !coverage(value.statements, key, cards))) return null;
+    if ((value.bank_outflows || []).some(row => row.card_statement_missing && cards.includes(row.card_id) && row.currency === currency && [currentMonth, previousMonth].some(key => row.date.startsWith(key)))) return null;
+    const rows = key => value.transactions.filter(row => cards.includes(row.card_id) && row.date.startsWith(key) && row.currency === currency && ['purchase', 'tax', 'fee', 'refund'].includes(row.kind));
+    const currentRows = rows(currentMonth), previousRows = rows(previousMonth);
+    const current = sum(currentRows), prior = sum(previousRows);
+    const differences = field => {
+      const groups = new Map();
+      for (const [entries, direction] of [[currentRows, 1n], [previousRows, -1n]]) entries.forEach(row => {
+        const label = field === 'category' ? row.category || 'other' : row.merchant || row.description || 'other';
+        const key = field === 'category' ? label : clean(label).replace(/[_*\s]+/g, ' ').trim();
+        if (!groups.has(key)) groups.set(key, {key, label, delta: 0n});
+        groups.get(key).delta += direction * decimal(row.amount);
+      });
+      const magnitude = value => value < 0n ? -value : value;
+      return [...groups.values()].filter(item => item.delta !== 0n).sort((first, second) => magnitude(first.delta) > magnitude(second.delta) ? -1 : magnitude(first.delta) < magnitude(second.delta) ? 1 : first.key.localeCompare(second.key));
+    };
+    return {current, prior, delta: current - prior, previousMonth, categories: differences('category'), merchants: differences('merchant')};
   }
   function matching(rows) {
     const term = clean(query.trim());
@@ -139,7 +174,8 @@ const DexExpenses = (() => {
   function updateCenter() {
     const rows = rowsFor(data());
     const selected = selection ? matching(rows).filter(row => (selection.mode === 'categories' ? row.category || 'other' : row.merchant || row.description) === selection.key) : rows;
-    select('.expense-ring-center .caption').textContent = selection ? selection.mode === 'categories' ? categoryName(selection.key) : selection.key : text('Gasto registrado', 'Recorded spending');
+    const estimated = selected.some(row => row.classification === 'unidentified');
+    select('.expense-ring-center .caption').textContent = selection ? selection.mode === 'categories' ? categoryName(selection.key) : selection.key : estimated ? text(month.length === 4 ? 'Acumulado estimado' : 'Gasto estimado', month.length === 4 ? 'Estimated year total' : 'Estimated spending') : month.length === 4 ? text('Acumulado registrado', 'Recorded year total') : text('Gasto registrado', 'Recorded spending');
     select('#expense-total').innerHTML = headlineAmount(sum(selected));
     select('.expense-count').textContent = countLabel(selected.length);
     fitTotal();
@@ -254,7 +290,7 @@ const DexExpenses = (() => {
     }
     const rows = matching(rowsFor(value));
     if (!rows.length) {
-      container.innerHTML = `<div class="empty">${icon(query ? 'search' : 'receipt-text')}<strong>${text(!selectedCards.length ? 'Sin tarjetas seleccionadas' : query ? 'Sin coincidencias' : 'Sin movimientos registrados', !selectedCards.length ? 'No cards selected' : query ? 'No matches' : 'No recorded transactions')}</strong><span>${escapeHTML(monthName(month))} \u00b7 ${denomination}</span></div>`;
+      container.innerHTML = `<div class="empty">${icon(query ? 'search' : 'receipt-text')}<strong>${text(!selectedSources(value).length ? 'Sin tarjetas seleccionadas' : query ? 'Sin coincidencias' : 'Sin movimientos registrados', !selectedSources(value).length ? 'No cards selected' : query ? 'No matches' : 'No recorded transactions')}</strong><span>${escapeHTML(monthName(month))} \u00b7 ${denomination}</span></div>`;
     } else if (mode === 'transactions') {
       container.innerHTML = `<div class="expense-result-count">${countLabel(rows.length)}<strong class="sensitive">${amount(sum(rows))}</strong></div>${transactionRows(rows)}`;
     } else {
@@ -284,7 +320,8 @@ const DexExpenses = (() => {
     }
     select('#expenses-heading').textContent = text('Gastos', 'Spending');
     select('#gastos').dataset.title = text('Gastos', 'Spending');
-    const available = months(value);
+    const availableMonths = months(value);
+    const available = month.length === 4 ? [...new Set(availableMonths.map(key => key.slice(0, 4)))] : availableMonths;
     const cards = cardsFor(value);
     selectedCards = cards.filter(card => selectedCards.includes(card.id)).map(card => card.id);
     if (!cardsInitialized && cards.length) {
@@ -302,21 +339,39 @@ const DexExpenses = (() => {
       previous.setUTCDate(1); previous.setUTCMonth(previous.getUTCMonth() - 1);
       month = available.includes(previous.toISOString().slice(0, 7)) ? previous.toISOString().slice(0, 7) : available.at(-1);
     }
-    const nextKey = JSON.stringify([value, month, denomination, selectedCards, hiddenAmounts, I18n.language, getComputedStyle(document.documentElement).getPropertyValue('--fill-2')]);
+    const nextKey = JSON.stringify([value, month, denomination, selectedCards, sourceScope, hiddenAmounts, I18n.language, getComputedStyle(document.documentElement).getPropertyValue('--fill-2')]);
     if (nextKey === renderKey && select('#expense-ring')) return;
     renderKey = nextKey;
     entranceAnimations.forEach(animation => animation.cancel());
     entranceAnimations = [];
     const rows = rowsFor(value);
-    const statements = value.statements.filter(statement => selectedCards.includes(statement.card_id) && statement.start.slice(0, 7) <= month && statement.end.slice(0, 7) >= month);
-    const covered = coverage(statements, month, selectedCards);
+    const sources = selectedSources(value);
+    const statements = value.statements.filter(statement => sources.includes(statement.card_id) && statement.start.slice(0, month.length) <= month && statement.end.slice(0, month.length) >= month);
+    const covered = coverage(statements, month, sources) && !bankRows(value).some(row => row.card_statement_missing);
     const taxes = sum(rows.filter(row => ['tax', 'fee'].includes(row.kind)));
     const refunds = sum(rows.filter(row => row.kind === 'refund'));
     const position = available.indexOf(month);
     root.innerHTML = `<div class="expense-month-control">${button(text('Mes anterior', 'Previous month'), 'chevron-left', `data-expense-step="-1" ${position === 0 ? 'disabled' : ''}`)}<button type="button" class="expense-month" id="expense-month" data-month="${month}" aria-haspopup="dialog" aria-label="${text('Mes de gastos', 'Spending month')}: ${escapeHTML(monthName(month))}"><span>${escapeHTML(monthName(month))}</span>${icon('chevron-down')}</button>${button(text('Mes siguiente', 'Next month'), 'chevron-right', `data-expense-step="1" ${position === available.length - 1 ? 'disabled' : ''}`)}</div><div class="expense-card-rail" role="group" aria-label="${text('Tarjetas de cr\u00e9dito', 'Credit cards')}">${cards.map((card, index) => cardMarkup(card, index, value)).join('')}</div>
-      <section class="expense-overview" aria-label="${text('Resumen del mes', 'Monthly overview')}"><div class="expense-ring-wrap"><canvas id="expense-ring" width="264" height="264" role="img" aria-label="${text(hiddenAmounts ? 'Importes ocultos' : 'Gastos por categor\u00eda', hiddenAmounts ? 'Amounts hidden' : 'Spending by category')}"></canvas><div class="expense-ring-center"><button type="button" id="expense-reset" aria-label="${text('Mostrar total del mes', 'Show monthly total')}" title="${text('Mostrar total del mes', 'Show monthly total')}"><span class="caption">${text('Gasto registrado', 'Recorded spending')}</span><span id="expense-total" class="sensitive">${headlineAmount(sum(rows))}</span><span class="expense-count">${countLabel(rows.length)}</span></button><div class="segmented expense-currency" role="group" aria-label="${text('Moneda de gastos', 'Spending currency')}">${['CRC', 'USD'].map(unit => `<button type="button" data-expense-currency="${unit}" aria-pressed="${unit === denomination}">${unit}</button>`).join('')}</div></div></div><div class="expense-meta"><span class="expense-source">${escapeHTML([...new Set(statements.map(statement => statement.issuer))].join(' \u00b7 ') || text('Sin informe', 'No statement'))}</span><button type="button" class="expense-coverage" id="expense-coverage" ${selectedCards.length ? '' : 'disabled'}>${icon(covered ? 'calendar-check' : 'circle-alert')}${text(!selectedCards.length ? 'Sin selecci\u00f3n' : covered ? 'Per\u00edodo cubierto' : 'Mes parcial', !selectedCards.length ? 'No selection' : covered ? 'Period covered' : 'Partial month')}${icon('chevron-right')}</button></div><div class="expense-breakdown">${taxes ? `<span>${text('IVA y cargos', 'Tax & fees')}<strong>${amount(taxes)}</strong></span>` : ''}${refunds ? `<span>${text('Devoluciones', 'Refunds')}<strong>${amount(refunds)}</strong></span>` : ''}</div></section>
+      <section class="expense-overview" aria-label="${text('Resumen del periodo', 'Period overview')}"><div class="expense-ring-wrap"><canvas id="expense-ring" width="264" height="264" role="img" aria-label="${text(hiddenAmounts ? 'Importes ocultos' : 'Gastos por categor\u00eda', hiddenAmounts ? 'Amounts hidden' : 'Spending by category')}"></canvas><div class="expense-ring-center"><button type="button" id="expense-reset" aria-label="${text('Mostrar total del periodo', 'Show period total')}" title="${text('Mostrar total del periodo', 'Show period total')}"><span class="caption">${text('Gasto registrado', 'Recorded spending')}</span><span id="expense-total" class="sensitive">${headlineAmount(sum(rows))}</span><span class="expense-count">${countLabel(rows.length)}</span></button><div class="segmented expense-currency" role="group" aria-label="${text('Moneda de gastos', 'Spending currency')}">${['CRC', 'USD'].map(unit => `<button type="button" data-expense-currency="${unit}" aria-pressed="${unit === denomination}">${unit}</button>`).join('')}</div></div></div><div class="expense-meta"><span class="expense-source">${escapeHTML([...new Set(statements.map(statement => statement.issuer))].join(' \u00b7 ') || text('Sin informe', 'No statement'))}</span><button type="button" class="expense-coverage" id="expense-coverage" ${sources.length ? '' : 'disabled'}>${icon(covered ? 'calendar-check' : 'circle-alert')}${text(!sources.length ? 'Sin selecci\u00f3n' : covered ? 'Per\u00edodo cubierto' : month.length === 4 ? 'A\u00f1o parcial' : 'Mes parcial', !sources.length ? 'No selection' : covered ? 'Period covered' : month.length === 4 ? 'Partial year' : 'Partial month')}${icon('chevron-right')}</button></div><div class="expense-breakdown">${taxes ? `<span>${text('IVA y cargos', 'Tax & fees')}<strong>${amount(taxes)}</strong></span>` : ''}${refunds ? `<span>${text('Devoluciones', 'Refunds')}<strong>${amount(refunds)}</strong></span>` : ''}</div></section>
       <div class="expense-browser"><div class="expense-views" role="group" aria-label="${text('Agrupar gastos', 'Group expenses')}">${[['categories', text('Categor\u00edas', 'Categories')], ['merchants', text('Comercios', 'Merchants')], ['transactions', text('Movimientos', 'Transactions')]].map(([key, label]) => `<button type="button" data-expense-mode="${key}" aria-pressed="${mode === key}">${label}</button>`).join('')}</div>${button(text('Buscar gastos', 'Search spending'), 'search', `id="expense-search-toggle" aria-expanded="${searching}" aria-controls="expense-search-box"`)}</div>
-      <label id="expense-search-box" class="search expense-search" ${searching ? '' : 'hidden'}>${icon('search')}<input id="expense-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="${text('Buscar comercio o movimiento', 'Search merchant or transaction')}" aria-label="${text('Buscar gastos', 'Search spending')}" value="${escapeHTML(query)}"></label><div class="expense-ledger" role="region" aria-label="${text('Detalle de gastos', 'Spending details')}"><div class="expense-analysis"><button type="button" id="expense-compare" ${selectedCards.length ? '' : 'disabled'}>${icon('chart-no-axes-combined')}${text('Comparar', 'Compare')}</button><button type="button" id="expense-recurring" ${selectedCards.length ? '' : 'disabled'}>${icon('repeat')}${text('Recurrentes', 'Recurring')}</button></div>${reviewMarkup(value)}<div id="expense-results"></div></div>`;
+      <label id="expense-search-box" class="search expense-search" ${searching ? '' : 'hidden'}>${icon('search')}<input id="expense-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="${text('Buscar comercio o movimiento', 'Search merchant or transaction')}" aria-label="${text('Buscar gastos', 'Search spending')}" value="${escapeHTML(query)}"></label><div class="expense-ledger" role="region" aria-label="${text('Detalle de gastos', 'Spending details')}"><div class="expense-analysis"><button type="button" id="expense-compare" ${sources.length ? '' : 'disabled'}>${icon('chart-no-axes-combined')}${text('Comparar', 'Compare')}</button><button type="button" id="expense-recurring" ${sources.length ? '' : 'disabled'}>${icon('repeat')}${text('Recurrentes', 'Recurring')}</button></div>${reviewMarkup(value)}<div id="expense-results"></div></div>`;
+    if ((value.bank_accounts || []).length) {
+      select('.expense-month-control').insertAdjacentHTML('afterend', `<div class="segmented expense-origins" role="group" aria-label="${text('Origen de gastos', 'Spending source')}">${[['all', text('Todo', 'All')], ['cards', text('Tarjetas', 'Cards')], ['bank', text('Transferencias', 'Transfers')]].map(([key, label]) => `<button type="button" data-expense-origin="${key}" aria-pressed="${sourceScope === key}">${label}</button>`).join('')}</div>`);
+      select('.expense-origins').style.setProperty('--index', ['all', 'cards', 'bank'].indexOf(sourceScope));
+      all('[data-expense-origin]').forEach(control => control.addEventListener('click', () => {
+        root.style.minHeight = `${root.getBoundingClientRect().height}px`;
+        sourceScope = control.dataset.expenseOrigin;
+        selection = null;
+        query = '';
+        render();
+        icons();
+        select(`[data-expense-origin="${sourceScope}"]`).focus({preventScroll: true});
+      }));
+      all('[data-expense-card]').forEach(control => { control.disabled = sourceScope === 'bank'; });
+    }
+    const unknown = bankRows(value).filter(row => row.classification === 'unidentified');
+    if (unknown.length) select('.expense-ledger').insertAdjacentHTML('afterbegin', `<button type="button" id="expense-unidentified" class="expense-unidentified">${icon('circle-help')}<span>${unknown.length} ${text('por confirmar', 'unconfirmed')}</span><strong class="sensitive">${amount(sum(unknown))}</strong>${icon('chevron-right')}</button>`);
+    if (select('#expense-unidentified')) select('#expense-unidentified').addEventListener('click', event => openDetail('expense', {coverage: true}, event.currentTarget));
     all('[data-expense-card]').forEach(control => control.addEventListener('click', () => {
       const card = control.dataset.expenseCard;
       root.style.minHeight = `${root.getBoundingClientRect().height}px`;
@@ -357,7 +412,7 @@ const DexExpenses = (() => {
     select('#expense-compare').addEventListener('click', event => openDetail('expense', {compare: true}, event.currentTarget));
     select('#expense-recurring').addEventListener('click', event => openDetail('expense', {recurring: true}, event.currentTarget));
     renderList(value);
-    if (selection) updateCenter();
+    updateCenter();
     fitTotal();
     document.fonts.ready.then(fitTotal);
     if (animate && !select('#gastos').hidden) enter(direction);
@@ -365,8 +420,8 @@ const DexExpenses = (() => {
   }
   function coverage(statements, selectedMonth, cards = [...new Set(statements.map(item => item.card_id))]) {
     if (!statements.length) return false;
-    const first = selectedMonth + '-01';
-    const last = selectedMonth + '-' + new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5)), 0).getDate();
+    const first = selectedMonth + (selectedMonth.length === 4 ? '-01-01' : '-01');
+    const last = selectedMonth.length === 4 ? selectedMonth + '-12-31' : selectedMonth + '-' + new Date(Number(selectedMonth.slice(0, 4)), Number(selectedMonth.slice(5)), 0).getDate();
     return cards.length > 0 && cards.every(card => {
       let cursor = first;
       for (const statement of statements.filter(item => item.card_id === card).sort((start, end) => start.start.localeCompare(end.start))) {
@@ -382,27 +437,38 @@ const DexExpenses = (() => {
     const container = select('#detail-content');
     select('#detail-eyebrow').textContent = text('GASTOS', 'SPENDING');
     if (selection.months) {
-      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Mes de gastos', 'Spending month')}</h2></div><div class="expense-month-options">${months(value).reverse().map(key => `<button type="button" class="expense-month-choice" data-expense-month-option="${key}" aria-pressed="${key === month}">${escapeHTML(monthName(key))}</button>`).join('')}</div>`;
+      const available = months(value);
+      const options = [...new Set(available.map(key => key.slice(0, 4)))].reverse().flatMap(year => [year, ...available.filter(key => key.startsWith(year)).reverse()]);
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Periodo de gastos', 'Spending period')}</h2></div><div class="expense-month-options">${options.map(key => `<button type="button" class="expense-month-choice" data-expense-month-option="${key}" aria-pressed="${key === month}">${escapeHTML(monthName(key))}${key.length === 4 ? ` <span class="subtle">\u00b7 ${text('Acumulado', 'Year total')}</span>` : ''}</button>`).join('')}</div>`;
       container.querySelectorAll('[data-expense-month-option]').forEach(control => control.addEventListener('click', () => {
         closeDetail();
         changeMonth(control.dataset.expenseMonthOption);
         select('#expense-month').focus({preventScroll: true});
       }));
     } else if (selection.compare) {
-      const comparison = compareMonths(value, month, denomination, selectedCards);
-      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Mes a mes', 'Month to month')}</h2></div>${comparison ? `<p class="subtle">${text('Meses completos, mismas tarjetas', 'Complete months, same cards')} \u00b7 ${denomination}</p>${line(escapeHTML(monthName(comparison.previousMonth)), amount(comparison.prior))}${line(escapeHTML(monthName(month)), amount(comparison.current))}${line(text('Diferencia de gasto', 'Spending difference'), amount(comparison.delta))}${comparison.prior > 0n ? line(text('Variaci\u00f3n', 'Change'), hiddenAmounts ? '\u2022\u2022\u2022\u2022' : (Number(comparison.delta * 1000n / comparison.prior) / 10).toLocaleString(I18n.locale) + '%') : ''}` : `<p class="subtle">${text('Solo se comparan meses completos para todas las tarjetas seleccionadas. Falta cobertura del mes actual o del anterior.', 'Comparison requires complete coverage for all selected cards in both this month and the previous one.')}</p>`}`;
+      const comparison = compareMonths(value, month, denomination, selectedSources(value));
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${month.length === 4 ? text('A\u00f1o a a\u00f1o', 'Year to year') : text('Mes a mes', 'Month to month')}</h2></div>${comparison ? `<p class="subtle">${text('Periodos completos, mismas fuentes', 'Complete periods, same sources')} \u00b7 ${denomination}</p>${line(escapeHTML(monthName(comparison.previousMonth)), amount(comparison.prior))}${line(escapeHTML(monthName(month)), amount(comparison.current))}${line(text('Diferencia de gasto', 'Spending difference'), amount(comparison.delta))}${comparison.prior > 0n ? line(text('Variaci\u00f3n', 'Change'), hiddenAmounts ? '\u2022\u2022\u2022\u2022' : (Number(comparison.delta * 1000n / comparison.prior) / 10).toLocaleString(I18n.locale) + '%') : ''}` : `<p class="subtle">${text('Falta cobertura del periodo actual o del anterior para las mismas fuentes. No se comparan periodos incompletos.', 'Complete coverage is missing in the current or previous period for the same sources. Incomplete periods are not compared.')}</p>`}`;
+      if (comparison) {
+        const leading = comparison.categories.slice(0, 3);
+        const remainder = comparison.delta - leading.reduce((total, item) => total + item.delta, 0n);
+        const deltaLabel = delta => `${delta > 0n && !hiddenAmounts ? '+' : ''}${amount(delta)}`;
+        container.insertAdjacentHTML('beforeend', `<section class="expense-explanation"><h3>${text('Qu\u00e9 cambi\u00f3', 'What changed')}</h3>${leading.map(item => line(escapeHTML(categoryName(item.key)), deltaLabel(item.delta))).join('')}${remainder ? line(text('Otros cambios', 'Other changes'), deltaLabel(remainder)) : ''}${!comparison.categories.length ? `<p class="subtle">${text('Sin cambios por categor\u00eda.', 'No category changes.')}</p>` : ''}<details class="expense-insight"><summary><span>${text('Por comercio', 'By merchant')}</span>${icon('chevron-down')}</summary>${comparison.merchants.map(item => line(escapeHTML(item.label), deltaLabel(item.delta))).join('')}</details></section>`);
+      }
     } else if (selection.recurring) {
-      const items = (value.insights || []).filter(item => item.kind === 'recurring_payment' && item.date.startsWith(month) && item.currency === denomination && selectedCards.includes(item.card_id));
+      const items = (value.insights || []).filter(item => item.kind === 'recurring_payment' && item.date.startsWith(month) && item.currency === denomination && selectedSources(value).includes(item.card_id));
       container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${text('Posibles recurrentes', 'Possible recurring payments')}</h2></div><p class="subtle">${escapeHTML(monthName(month))} \u00b7 ${denomination}</p><p class="subtle">${text('Tres meses completos con un cargo mensual. El patr\u00f3n no confirma una suscripci\u00f3n.', 'Three complete months with one monthly charge. This pattern does not confirm a subscription.')}</p>${items.length ? items.map(item => `<details class="expense-insight"><summary><span><strong data-no-translate>${escapeHTML(item.merchant)}</strong><small>${escapeHTML(cardName(cardsFor(value).find(card => card.id === item.card_id)))}</small></span><strong class="sensitive">${money(item.amount, item.currency)}</strong>${icon('chevron-down')}</summary>${line(text('Cambio mensual', 'Monthly change'), money(item.change, item.currency))}${transactionRows(value.transactions.filter(row => item.transaction_ids.includes(row.id)))}</details>`).join('') : `<div class="empty"><strong>${text('Sin patrones suficientes', 'Not enough evidence')}</strong></div>`}`;
       bindDetails(container, selection);
     } else if (selection.coverage) {
-      const statements = value.statements.filter(statement => selectedCards.includes(statement.card_id) && statement.start.slice(0, 7) <= month && statement.end.slice(0, 7) >= month);
-      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${escapeHTML(monthName(month))}</h2></div><p class="subtle">${text('Cobertura de los estados recibidos. No incluye otras tarjetas, efectivo ni compras pendientes de registrar.', 'Coverage of received statements. Excludes other cards, cash and purchases not yet posted.')}</p>${statements.map(statement => `<div class="expense-statement"><img src="./brand-bac.svg" width="36" height="36" alt=""><div><strong data-no-translate>${escapeHTML(statement.issuer)} \u00b7 ${escapeHTML(cardName(cardsFor(value).find(card => card.id === statement.card_id)))}</strong><p>${escapeHTML(dateLabel(statement.start))} \u2013 ${escapeHTML(dateLabel(statement.end, true))}</p></div></div>`).join('')}<p class="subtle">${text('Compras por fecha del movimiento. Los pagos de la tarjeta no se cuentan otra vez como gasto. Categor\u00edas sugeridas a partir del comercio.', 'Purchases by transaction date. Card payments are not counted again as spending. Categories are suggested from the merchant.')}</p>`;
+      const sources = selectedSources(value);
+      const statements = value.statements.filter(statement => sources.includes(statement.card_id) && statement.start.slice(0, month.length) <= month && statement.end.slice(0, month.length) >= month);
+      const periods = month.length === 4 ? Array.from({length: 12}, (_, index) => month + '-' + String(index + 1).padStart(2, '0')) : [];
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title">${escapeHTML(monthName(month))}</h2></div><p class="subtle">${text('Cobertura de los estados recibidos. Incluye salidas pendientes de identificar como gasto estimado. No incluye efectivo ni se estiman meses faltantes.', 'Coverage of received statements. Unidentified outflows are included as estimated spending. Excludes cash and does not estimate missing months.')}</p>${periods.length ? `<div class="expense-year-coverage">${periods.map(key => { const complete = coverage(statements, key, sources) && !bankRows(value).some(row => row.card_statement_missing && row.date.startsWith(key)); return line(escapeHTML(monthName(key)), text((value.withheld_months || []).includes(key) ? 'Pendiente' : complete ? 'Completo' : statements.some(item => item.start.slice(0, 7) <= key && item.end.slice(0, 7) >= key) ? 'Parcial' : 'Sin cobertura', (value.withheld_months || []).includes(key) ? 'Pending' : complete ? 'Complete' : statements.some(item => item.start.slice(0, 7) <= key && item.end.slice(0, 7) >= key) ? 'Partial' : 'No coverage')); }).join('')}</div>` : statements.map(statement => `<div class="expense-statement"><img src="./${statement.source === 'multimoney' ? 'brand-multimoney.svg' : 'brand-bac.svg'}" width="36" height="36" alt=""><div><strong data-no-translate>${escapeHTML(sourceName(value, statement.card_id))}</strong><p>${escapeHTML(dateLabel(statement.start))} \u2013 ${escapeHTML(dateLabel(statement.end, true))}</p></div></div>`).join('')}${bankBreakdown(value)}`;
+      bindDetails(container, selection);
     } else if (selection.transaction) {
-      const row = value.transactions.find(item => item.id === selection.transaction);
+      const row = value.transactions.find(item => item.id === selection.transaction) || (value.bank_outflows || []).find(item => item.id === selection.transaction);
       if (!row) { closeDetail(); return; }
       const statement = value.statements.find(item => item.id === row.statement_id);
-      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title" data-no-translate>${escapeHTML(row.merchant || row.description)}</h2></div><div class="expense-detail-total sensitive">${money(row.amount, row.currency)}</div>${line(text('Fecha', 'Date'), escapeHTML(dateLabel(row.date, true)))}${line(text('Tarjeta', 'Card'), escapeHTML(cardName(cardsFor(value).find(card => card.id === row.card_id))))}${line(text('Categor\u00eda sugerida', 'Suggested category'), escapeHTML(categoryName(row.category)))}${line(text('Moneda', 'Currency'), row.currency)}${line(text('Origen', 'Source'), escapeHTML(statement?.issuer || 'BAC'))}<div class="expense-original"><span class="caption">${text('Descripci\u00f3n del estado', 'Statement description')}</span><p data-no-translate>${escapeHTML(row.description)}</p></div>`;
+      container.innerHTML = `<div class="detail-heading"><h2 id="detail-title" data-no-translate>${escapeHTML(row.merchant || row.description)}</h2></div><div class="expense-detail-total sensitive">${money(row.amount, row.currency)}</div>${row.classification === 'unidentified' ? `<p class="subtle">${text('Incluido en el gasto estimado. Destino o prop\u00f3sito por confirmar.', 'Included in estimated spending. Destination or purpose unconfirmed.')}</p>` : ''}${line(text('Fecha', 'Date'), escapeHTML(dateLabel(row.date, true)))}${line(row.source === 'bank' ? text('Cuenta', 'Account') : text('Tarjeta', 'Card'), escapeHTML(sourceName(value, row.card_id)))}${line(text('Categor\u00eda sugerida', 'Suggested category'), escapeHTML(categoryName(row.category)))}${line(text('Moneda', 'Currency'), row.currency)}${line(text('Origen', 'Source'), escapeHTML(statement?.issuer || 'BAC'))}<div class="expense-original"><span class="caption">${text('Descripci\u00f3n del estado', 'Statement description')}</span><p data-no-translate>${escapeHTML(row.description)}</p></div>`;
       if (selection.back) {
         container.insertAdjacentHTML('afterbegin', button(text('Volver', 'Back'), 'chevron-left', 'id="expense-back"'));
         select('#expense-back').addEventListener('click', event => openDetail('expense', selection.back, event.currentTarget));

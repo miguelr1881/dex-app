@@ -555,6 +555,9 @@ button.adjustment-row:active, button.crypto-row:active, button.setting-row:activ
 .sync-summary .subtle { margin: 0 0 10px; }
 .sync-summary .text-action { min-height: 44px; display: inline-flex; align-items: center; }
 .expense-card-rail { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 4px auto 18px; max-width: 440px; }
+.expense-origins { min-width: 0; max-width: 440px; margin: 0 auto 12px; border-radius: 8px; }
+.expense-origins button { min-height: 44px; padding: 0 4px; font-size: 12px; }
+.expense-card:disabled { opacity: .5; }
 .expense-card { width: 100%; min-width: 0; padding: 0; border: 0; border-radius: 8px; text-align: left; color: var(--label); background: none; display: grid; align-content: start; gap: 7px; }
 .expense-card-surface { display: grid; place-items: center; width: 100%; aspect-ratio: 557 / 352; padding: 4px; border-radius: 8px; min-width: 0; opacity: .5; box-shadow: inset 0 0 0 1px var(--sep); transition: opacity .2s, box-shadow .2s; }
 .expense-card[aria-pressed="true"] .expense-card-surface { opacity: 1; box-shadow: inset 0 0 0 2px var(--label), 0 6px 14px rgba(0, 0, 0, .14); }
@@ -570,6 +573,11 @@ button.adjustment-row:active, button.crypto-row:active, button.setting-row:activ
 .expense-analysis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; padding: 12px 0 8px; }
 .expense-analysis button { min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--label-2); }
 .expense-analysis svg { width: 17px; height: 17px; }
+.expense-unidentified { width: 100%; min-height: 44px; display: flex; align-items: center; gap: 8px; font-size: 12px; text-align: left; color: var(--label-2); }
+.expense-unidentified span { flex: 1; }
+.expense-unidentified svg { width: 16px; height: 16px; flex: 0 0 16px; }
+.expense-explanation { padding-top: 24px; }
+.expense-explanation h3 { margin: 0 0 16px; font-size: 18px; }
 .expense-reviews { margin: 12px 0 18px; border-block: 1px solid var(--sep); }
 .expense-reviews>summary { display: flex; align-items: center; gap: 10px; min-height: 48px; list-style: none; cursor: pointer; }
 .expense-reviews>summary>span { flex: 1; }
