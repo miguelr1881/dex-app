@@ -376,6 +376,32 @@ main.releasing { transition: transform .5s var(--spring); }
 }
 @keyframes chart-in { from { opacity: 0; transform: scaleY(.94); } }
 .history-section .period-chips { margin-top: 10px; }
+.expense-monthly { margin: 24px 0 30px; min-width: 0; letter-spacing: 0; }
+.expense-monthly .section-heading h2 { font-size: 20px; letter-spacing: 0; }
+.expense-monthly-currency { --count: 3; width: 100%; max-width: 440px; margin: 0 auto 12px; border-radius: 8px; }
+.expense-monthly-currency button { min-height: 44px; min-width: 0; padding: 0 8px; }
+.expense-monthly-readout { min-height: 126px; }
+.expense-monthly-date { display: flex; justify-content: space-between; align-items: center; min-height: 44px; gap: 8px; font-size: 14px; color: var(--label-2); }
+.expense-monthly-date > span { min-width: 0; }
+#expense-monthly-values { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 16px; font-variant-numeric: tabular-nums; }
+#expense-monthly-values > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+#expense-monthly-values strong { font: 600 20px/1.3 var(--font-display); letter-spacing: 0; overflow-wrap: anywhere; }
+#expense-monthly-values small { min-height: 16px; color: var(--label-2); font-size: 11px; line-height: 16px; overflow-wrap: anywhere; }
+.expense-monthly-plot { position: relative; height: 220px; }
+#expense-monthly-chart { display: block; width: 100%; height: 220px; touch-action: pan-y pinch-zoom; cursor: crosshair; }
+.expense-monthly-plot > p { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; margin: 0; }
+.expense-monthly .period-chips { margin-top: 12px; }
+.expense-monthly .period-chips button { min-height: 44px; }
+.expense-monthly-note { min-height: 72px; margin: 14px 0 0; font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
+.expense-monthly-note a { color: var(--tint); }
+.expense-monthly-rows > button { display: grid; grid-template-columns: minmax(72px, 1fr) minmax(0, 2fr) 16px; gap: 12px; width: 100%; min-height: 56px; padding: 12px 0; text-align: left; border-bottom: 1px solid var(--separator); }
+.expense-monthly-rows > button > span:nth-child(2) { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 0; }
+.expense-monthly-rows strong { font-size: 14px; overflow-wrap: anywhere; }
+.expense-monthly-rows small { font-size: 11px; color: var(--label-2); }
+.expense-monthly-rows svg { width: 16px; height: 16px; align-self: center; }
+@media (prefers-reduced-motion: reduce) {
+  .expense-monthly, .expense-monthly * { transition: none !important; animation: none !important; }
+}
 #history-note { margin-top: 12px; }
 .history-metric-label { margin: 0; }
 .disclosure { margin-top: 10px; }

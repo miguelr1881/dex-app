@@ -220,7 +220,7 @@ const DexNative = (() => {
   let pull = null;
   function canPull(target) {
     return scrollY <= 0 && !dialog.open && !document.body.classList.contains('loading') && document.getElementById('portal-login').hidden &&
-      !target.closest('#history-chart, .filter-row, input, select, textarea, .float-bar');
+      !target.closest('#history-chart, #expense-monthly-chart, .filter-row, input, select, textarea, .float-bar');
   }
   document.addEventListener('touchstart', event => {
     if (event.touches.length !== 1 || !canPull(event.target)) { pull = null; return; }

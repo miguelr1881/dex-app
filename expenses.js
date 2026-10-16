@@ -12,6 +12,10 @@ const DexExpenses = (() => {
   let selection = null;
   let selectedCards = [];
   let sourceScope = 'all';
+  let monthlyCurrency = 'separate';
+  let monthlyPeriod = '12';
+  let monthlySelection = null;
+  let monthlyModel = null;
   let cardsInitialized = false;
   let renderKey = '';
   let layoutKey = '';
@@ -88,8 +92,181 @@ const DexExpenses = (() => {
   function cardName(card, index = 0) {
     return card?.last4 ? '\u2022\u2022 ' + card.last4 : text('Tarjeta ', 'Card ') + (index + 1);
   }
-  function selectedSources(value) {
-    return [...(sourceScope === 'bank' ? [] : selectedCards), ...(sourceScope === 'cards' ? [] : (value.bank_accounts || []).filter(account => account.currency === denomination).map(account => account.id))];
+  function selectedSources(value, unit = denomination) {
+    return [...(sourceScope === 'bank' ? [] : selectedCards), ...(sourceScope === 'cards' ? [] : (value.bank_accounts || []).filter(account => !unit || account.currency === unit).map(account => account.id))];
+  }
+  function monthlySeries(value, {sources, conversion = 'separate', period = '12', through = '', fx = null}) {
+    const available = months(value);
+    const currencies = conversion === 'separate' ? ['CRC', 'USD'] : [conversion];
+    const points = [];
+    if (!available.length) return {points, currencies};
+    let last = through.length === 4 ? through + '-12' : through || available.at(-1);
+    if (last > available.at(-1)) last = available.at(-1);
+    let cursor = available[0];
+    while (cursor <= last && points.length < 240) {
+      points.push({month: cursor});
+      const next = new Date(cursor + '-01T12:00:00Z');
+      next.setUTCMonth(next.getUTCMonth() + 1);
+      cursor = next.toISOString().slice(0, 7);
+    }
+    const banks = value.bank_accounts || [];
+    const rows = value.transactions.filter(row => sources.includes(row.card_id) && ['purchase', 'tax', 'fee', 'refund'].includes(row.kind));
+    let rate = null;
+    try { if (['current', 'stale'].includes(fx?.state) && decimal(fx.crc_per_usd) > 0n) rate = decimal(fx.crc_per_usd); } catch {}
+    for (const point of points) {
+      point.values = {}; point.complete = {}; point.estimated = {};
+      point.withheld = (value.withheld_months || []).includes(point.month);
+      const active = {};
+      for (const unit of ['CRC', 'USD']) {
+        const identifiers = sources.filter(identifier => !banks.some(bank => bank.id === identifier && bank.currency !== unit));
+        active[unit] = identifiers.length > 0;
+        const selected = rows.filter(row => row.currency === unit && row.date.startsWith(point.month));
+        const missingCard = (value.bank_outflows || []).some(row => identifiers.includes(row.card_id) && row.currency === unit && row.date.startsWith(point.month) && row.card_statement_missing);
+        point.complete[unit] = !point.withheld && !missingCard && coverage(value.statements, point.month, identifiers);
+        point.values[unit] = !point.withheld && (selected.length || point.complete[unit]) ? sum(selected) : null;
+        point.estimated[unit] = selected.some(row => row.classification === 'unidentified');
+      }
+      if (conversion !== 'separate') {
+        const opposite = conversion === 'USD' ? 'CRC' : 'USD';
+        const own = point.values[conversion], foreign = point.values[opposite];
+        point.values = {[conversion]: own == null && foreign == null || foreign != null && foreign !== 0n && !rate ? null
+          : (own || 0n) + (!foreign ? 0n : conversion === 'USD' ? foreign * 10n ** 20n / rate : foreign * rate / 10n ** 20n)};
+        point.complete = {[conversion]: (!active[conversion] || point.complete[conversion]) && (!active[opposite] || point.complete[opposite]) && point.values[conversion] != null};
+        point.estimated = {[conversion]: point.estimated.CRC || point.estimated.USD};
+      }
+    }
+    return {points: period === 'all' ? points : points.slice(-Number(period)), currencies, rate, fx};
+  }
+  function monthlyStatus(point, unit) {
+    if (point.withheld) return text('Pendiente', 'Pending');
+    if (point.values[unit] == null) return text('Sin dato', 'No data');
+    return [point.complete[unit] ? text('Cubierto', 'Covered') : text('Parcial', 'Partial'), point.estimated[unit] ? text('Por confirmar', 'Unconfirmed') : ''].filter(Boolean).join(' \u00b7 ');
+  }
+  function selectMonthlyPoint(index) {
+    if (!monthlyModel || hiddenAmounts) return;
+    const {chart, context, image, points, currencies, scale, height, width, positions, colors} = monthlyModel;
+    index = Math.max(0, Math.min(points.length - 1, index));
+    const point = points[index];
+    monthlyModel.index = index;
+    monthlySelection = point.month;
+    context.putImageData(image, 0, 0);
+    context.save(); context.setTransform(scale, 0, 0, scale, 0, 0);
+    context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--chart-guide');
+    context.lineWidth = 1;
+    const horizontal = points.length === 1 ? width / 2 : 18 + index / (points.length - 1) * (width - 36);
+    context.beginPath(); context.moveTo(horizontal, 4); context.lineTo(horizontal, height - 4); context.stroke();
+    currencies.forEach((unit, lane) => {
+      const position = positions[lane][index];
+      if (position == null) return;
+      context.fillStyle = colors[lane]; context.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg'); context.lineWidth = 3;
+      context.beginPath(); context.arc(horizontal, position, 5, 0, Math.PI * 2); context.fill(); context.stroke();
+    });
+    context.restore();
+    select('#expense-monthly-date').textContent = monthName(point.month);
+    const previous = points[index - 1];
+    select('#expense-monthly-values').innerHTML = currencies.map(unit => {
+      const value = point.values[unit];
+      const comparable = previous && point.complete[unit] && previous.complete[unit] && value != null && previous.values[unit] != null;
+      const delta = comparable ? value - previous.values[unit] : null;
+      return `<span><strong class="sensitive">${value == null ? '\u2014' : money(decimalString(value), unit)}</strong><small>${escapeHTML(monthlyStatus(point, unit))}</small><small>${delta == null ? '' : `${delta > 0n ? '+' : ''}${money(decimalString(delta), unit)} ${text('vs. mes anterior', 'vs. previous month')}`}</small></span>`;
+    }).join('');
+    const open = select('#expense-monthly-open');
+    open.disabled = point.withheld || currencies.every(unit => point.values[unit] == null);
+    open.setAttribute('aria-label', `${text('Ver movimientos de', 'View transactions for')} ${monthName(point.month)}`);
+    chart.setAttribute('aria-valuenow', String(index));
+    chart.setAttribute('aria-valuetext', `${monthName(point.month)}: ${currencies.map(unit => `${unit} ${point.values[unit] == null ? text('Sin dato', 'No data') : money(decimalString(point.values[unit]), unit)}; ${monthlyStatus(point, unit)}`).join('; ')}`);
+  }
+  function paintMonthly() {
+    const chart = select('#expense-monthly-chart');
+    if (!chart || !chart.clientWidth || hiddenAmounts || !monthlyModel?.points.length) return;
+    const {points, currencies} = monthlyModel;
+    const width = chart.clientWidth, height = 220, scale = Math.min(devicePixelRatio || 1, 3);
+    chart.width = Math.round(width * scale); chart.height = Math.round(height * scale);
+    const context = chart.getContext('2d'); context.scale(scale, scale);
+    const theme = getComputedStyle(document.documentElement);
+    const colors = [theme.getPropertyValue('--tint').trim(), labels.transport[3]];
+    const positions = [];
+    currencies.forEach((unit, lane) => {
+      const amounts = points.map(point => point.values[unit]).filter(value => value != null);
+      const minimum = amounts.reduce((first, second) => first < second ? first : second, 0n);
+      const maximum = amounts.reduce((first, second) => first > second ? first : second, 0n);
+      const range = maximum - minimum;
+      const laneHeight = height / currencies.length, top = lane * laneHeight + 26, bottom = (lane + 1) * laneHeight - 16;
+      const vertical = value => range === 0n ? (top + bottom) / 2 : top + Number((maximum - value) * 10000n / range) / 10000 * (bottom - top);
+      context.font = `500 11px ${theme.getPropertyValue('--font-body') || 'sans-serif'}`;
+      context.fillStyle = theme.getPropertyValue('--label-2');
+      context.textAlign = 'left'; context.fillText(unit, 2, lane * laneHeight + 13);
+      context.textAlign = 'right';
+      if (amounts.length) context.fillText(new Intl.NumberFormat(I18n.locale, {notation: 'compact', maximumFractionDigits: 1}).format(Number(decimalString(maximum))), width - 2, lane * laneHeight + 13);
+      context.save(); context.setLineDash([2, 5]); context.strokeStyle = theme.getPropertyValue('--chart-guide'); context.lineWidth = 1;
+      context.beginPath(); context.moveTo(0, vertical(0n)); context.lineTo(width, vertical(0n)); context.stroke(); context.restore();
+      context.strokeStyle = colors[lane]; context.fillStyle = colors[lane]; context.lineWidth = 2.4; context.lineJoin = 'round'; context.lineCap = 'round';
+      const lanePositions = points.map(point => point.values[unit] == null ? null : vertical(point.values[unit]));
+      positions.push(lanePositions);
+      points.forEach((point, index) => {
+        const position = lanePositions[index];
+        if (position == null) return;
+        const horizontal = points.length === 1 ? width / 2 : 18 + index / (points.length - 1) * (width - 36);
+        if (index && lanePositions[index - 1] != null) {
+          context.save(); if (!point.complete[unit] || !points[index - 1].complete[unit]) context.setLineDash([4, 4]);
+          context.beginPath(); context.moveTo(18 + (index - 1) / (points.length - 1) * (width - 36), lanePositions[index - 1]); context.lineTo(horizontal, position); context.stroke(); context.restore();
+        }
+        context.beginPath(); context.arc(horizontal, position, 3, 0, Math.PI * 2);
+        if (point.complete[unit]) context.fill(); else context.stroke();
+      });
+    });
+    Object.assign(monthlyModel, {chart, context, width, height, scale, positions, colors, image: context.getImageData(0, 0, chart.width, chart.height)});
+    const selected = points.findIndex(point => point.month === monthlySelection);
+    selectMonthlyPoint(selected < 0 ? points.length - 1 : selected);
+  }
+  function openMonthlyMonth(key) {
+    changeMonth(key);
+    select('#expense-month').focus({preventScroll: true});
+    select('.expense-month-control').scrollIntoView({block: 'start', behavior: DexNative.reduced() ? 'instant' : 'smooth'});
+  }
+  function renderMonthly(value = data()) {
+    const root = select('#expense-monthly');
+    if (!root) return;
+    const model = monthlySeries(value, {sources: selectedSources(value, null), conversion: monthlyCurrency, period: monthlyPeriod, through: month, fx: snapshot?.total_usd?.fx});
+    monthlyModel = model;
+    const {points, currencies, rate, fx} = model;
+    const available = points.some(point => currencies.some(unit => point.values[unit] != null));
+    const shortDate = key => new Intl.DateTimeFormat(I18n.locale, {month: 'short', year: 'numeric', timeZone: 'UTC'}).format(new Date(key + '-01T12:00:00Z'));
+    const updated = typeof fx?.updated_at === 'number' ? fx.updated_at * 1000 : Date.parse(fx?.updated_at);
+    const date = Number.isFinite(updated) ? new Intl.DateTimeFormat(I18n.locale, {dateStyle: 'medium', timeZone: 'UTC'}).format(new Date(updated)) : text('Fecha no disponible', 'Date unavailable');
+    const note = hiddenAmounts ? text('Importes ocultos', 'Amounts hidden') : monthlyCurrency === 'separate' ? text('Importes en moneda original.', 'Amounts in original currency.') : rate ? `${text('Conversi\u00f3n estimada', 'Estimated conversion')} \u00b7 1 USD = ${money(decimalString(rate), 'CRC')} \u00b7 ${escapeHTML(date)}. ${text('No es el cambio hist\u00f3rico.', 'Not the historical rate.')} ${fx.state === 'stale' ? text('Cambio pendiente de actualizar.', 'Exchange rate awaiting update.') : ''}` : text('Tipo de cambio no disponible. Conversi\u00f3n pendiente.', 'Exchange rate unavailable. Conversion pending.');
+    root.innerHTML = `<div class="section-heading"><h2>${text('Gastos mensuales', 'Monthly spending')}</h2></div><div class="segmented expense-monthly-currency" role="group" aria-label="${text('Moneda de la gr\u00e1fica', 'Chart currency')}">${[['USD',text('Todo USD','All USD')],['CRC',text('Todo CRC','All CRC')],['separate',text('Separado','Separate')]].map(([key,label]) => `<button type="button" data-expense-monthly-currency="${key}" aria-pressed="${monthlyCurrency === key}">${label}</button>`).join('')}</div><div class="expense-monthly-readout"><div class="expense-monthly-date"><span id="expense-monthly-date"></span>${button(text('Ver movimientos del mes', 'View month transactions'), 'arrow-up-right', 'id="expense-monthly-open" disabled')}</div><div id="expense-monthly-values"></div></div><div class="expense-monthly-plot"><canvas id="expense-monthly-chart" role="slider" tabindex="0" aria-label="${text('Gastos mensuales', 'Monthly spending')}" aria-valuemin="0" aria-valuemax="${Math.max(0,points.length - 1)}" aria-valuenow="0" ${hiddenAmounts || !available ? 'hidden' : ''}></canvas><p class="subtle" ${!hiddenAmounts && available ? 'hidden' : ''}>${text(hiddenAmounts ? 'Importes ocultos' : 'Sin datos en este intervalo', hiddenAmounts ? 'Amounts hidden' : 'No data in this range')}</p></div><div class="chart-range">${points.length ? [points[0], points.at(-1)].map(point => `<time datetime="${point.month}">${escapeHTML(shortDate(point.month))}</time>`).join('') : ''}</div><div class="period-chips" role="group" aria-label="${text('Intervalo de gastos', 'Spending range')}">${[['3','3M'],['6','6M'],['12','1A'],['all',text('Todo','All')]].map(([key,label]) => `<button type="button" data-expense-monthly-period="${key}" aria-pressed="${monthlyPeriod === key}">${I18n.language === 'en' && key === '12' ? '1Y' : label}</button>`).join('')}</div><p class="expense-monthly-note subtle">${note}${!hiddenAmounts && monthlyCurrency !== 'separate' && rate ? ' <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">Exchange Rate API</a>' : ''}</p><details class="disclosure expense-monthly-observations" ${hiddenAmounts ? 'hidden' : ''}><summary>${text('Meses', 'Months')}</summary><div class="expense-monthly-rows">${points.map(point => `<button type="button" data-expense-monthly-open="${point.month}" ${point.withheld || currencies.every(unit => point.values[unit] == null) ? 'disabled' : ''}><span>${escapeHTML(shortDate(point.month))}</span><span>${currencies.map(unit => `<strong class="sensitive">${point.values[unit] == null ? '\u2014' : money(decimalString(point.values[unit]), unit)}</strong><small>${escapeHTML(monthlyStatus(point, unit))}</small>`).join('')}</span>${icon('chevron-right')}</button>`).join('')}</div></details>`;
+    root.querySelector('.segmented').style.setProperty('--index', ['USD','CRC','separate'].indexOf(monthlyCurrency));
+    root.querySelectorAll('[data-expense-monthly-currency], [data-expense-monthly-period]').forEach(control => control.addEventListener('click', () => {
+      if (control.dataset.expenseMonthlyCurrency) monthlyCurrency = control.dataset.expenseMonthlyCurrency;
+      else monthlyPeriod = control.dataset.expenseMonthlyPeriod;
+      const selector = control.dataset.expenseMonthlyCurrency ? `[data-expense-monthly-currency="${monthlyCurrency}"]` : `[data-expense-monthly-period="${monthlyPeriod}"]`;
+      renderMonthly(); icons(); select(selector).focus({preventScroll:true});
+    }));
+    root.querySelectorAll('[data-expense-monthly-open]').forEach(control => control.addEventListener('click', () => openMonthlyMonth(control.dataset.expenseMonthlyOpen)));
+    select('#expense-monthly-open').addEventListener('click', () => { if (monthlySelection) openMonthlyMonth(monthlySelection); });
+    const chart = select('#expense-monthly-chart');
+    let origin = null;
+    const atPointer = event => {
+      if (!monthlyModel?.image) return;
+      const bounds = chart.getBoundingClientRect();
+      selectMonthlyPoint(Math.round((event.clientX - bounds.left - 18) / Math.max(1, bounds.width - 36) * (points.length - 1)));
+    };
+    chart.addEventListener('pointerdown', event => { if (event.isPrimary === false) return; origin = {horizontal:event.clientX, vertical:event.clientY}; if (event.pointerType === 'mouse') atPointer(event); });
+    chart.addEventListener('pointermove', event => {
+      if (event.isPrimary === false) return;
+      if (event.pointerType === 'mouse') { if (lastMousePosition?.horizontal !== event.clientX || lastMousePosition?.vertical !== event.clientY) atPointer(event); }
+      else if (origin && Math.abs(event.clientX - origin.horizontal) > 8 && Math.abs(event.clientX - origin.horizontal) > Math.abs(event.clientY - origin.vertical)) atPointer(event);
+    });
+    chart.addEventListener('pointerup', event => { if (origin && Math.abs(event.clientX - origin.horizontal) < 8 && Math.abs(event.clientY - origin.vertical) < 8) atPointer(event); origin = null; });
+    chart.addEventListener('pointercancel', () => { origin = null; });
+    chart.addEventListener('keydown', event => {
+      const index = monthlyModel?.index || 0;
+      const target = {ArrowLeft:index - 1, ArrowRight:index + 1, Home:0, End:points.length - 1}[event.key];
+      if (target != null) { event.preventDefault(); selectMonthlyPoint(target); }
+      else if (event.key === 'Enter' && !select('#expense-monthly-open').disabled) { event.preventDefault(); openMonthlyMonth(monthlySelection); }
+    });
+    paintMonthly();
   }
   function sourceName(value, identifier) {
     const account = (value.bank_accounts || []).find(item => item.id === identifier);
@@ -268,6 +445,7 @@ const DexExpenses = (() => {
     };
   }
   function enter(direction = 0, summary = true) {
+    paintMonthly();
     entranceAnimations.forEach(animation => animation.cancel());
     entranceAnimations = [];
     fitTotal();
@@ -339,7 +517,7 @@ const DexExpenses = (() => {
       previous.setUTCDate(1); previous.setUTCMonth(previous.getUTCMonth() - 1);
       month = available.includes(previous.toISOString().slice(0, 7)) ? previous.toISOString().slice(0, 7) : available.at(-1);
     }
-    const nextKey = JSON.stringify([value, month, denomination, selectedCards, sourceScope, hiddenAmounts, I18n.language, getComputedStyle(document.documentElement).getPropertyValue('--fill-2')]);
+    const nextKey = JSON.stringify([value, month, denomination, selectedCards, sourceScope, snapshot?.total_usd?.fx, hiddenAmounts, I18n.language, getComputedStyle(document.documentElement).getPropertyValue('--fill-2')]);
     if (nextKey === renderKey && select('#expense-ring')) return;
     renderKey = nextKey;
     entranceAnimations.forEach(animation => animation.cancel());
@@ -369,6 +547,8 @@ const DexExpenses = (() => {
       }));
       all('[data-expense-card]').forEach(control => { control.disabled = sourceScope === 'bank'; });
     }
+    select('.expense-overview').insertAdjacentHTML('afterend', `<section id="expense-monthly" class="expense-monthly" aria-label="${text('Gastos mensuales', 'Monthly spending')}"></section>`);
+    renderMonthly(value);
     const unknown = bankRows(value).filter(row => row.classification === 'unidentified');
     if (unknown.length) select('.expense-ledger').insertAdjacentHTML('afterbegin', `<button type="button" id="expense-unidentified" class="expense-unidentified">${icon('circle-help')}<span>${unknown.length} ${text('por confirmar', 'unconfirmed')}</span><strong class="sensitive">${amount(sum(unknown))}</strong>${icon('chevron-right')}</button>`);
     if (select('#expense-unidentified')) select('#expense-unidentified').addEventListener('click', event => openDetail('expense', {coverage: true}, event.currentTarget));
@@ -487,6 +667,7 @@ const DexExpenses = (() => {
       layoutWidth = innerWidth;
     }
     fitTotal();
+    paintMonthly();
   });
-  return {render, detail, grouped, coverage, months, compareMonths, enter};
+  return {render, detail, grouped, coverage, months, compareMonths, monthlySeries, enter};
 })();
