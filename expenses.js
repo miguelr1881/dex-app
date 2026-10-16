@@ -12,6 +12,8 @@ const DexExpenses = (() => {
   let selectedCards = [];
   let cardsInitialized = false;
   let renderKey = '';
+  let layoutKey = '';
+  let layoutWidth = innerWidth;
   const labels = {
     food: ['Comidas y caf\u00e9', 'Food & coffee', 'utensils', '#da8b66'],
     groceries: ['Supermercado', 'Groceries', 'shopping-basket', '#7fb898'],
@@ -244,6 +246,12 @@ const DexExpenses = (() => {
   function renderList(value = data()) {
     const container = select('#expense-results');
     if (!container) return;
+    const root = select('#expenses-content');
+    const nextLayout = JSON.stringify([month, denomination, mode, I18n.language, root.clientWidth]);
+    if (nextLayout !== layoutKey) {
+      root.style.minHeight = '';
+      layoutKey = nextLayout;
+    }
     const rows = matching(rowsFor(value));
     if (!rows.length) {
       container.innerHTML = `<div class="empty">${icon(query ? 'search' : 'receipt-text')}<strong>${text(!selectedCards.length ? 'Sin tarjetas seleccionadas' : query ? 'Sin coincidencias' : 'Sin movimientos registrados', !selectedCards.length ? 'No cards selected' : query ? 'No matches' : 'No recorded transactions')}</strong><span>${escapeHTML(monthName(month))} \u00b7 ${denomination}</span></div>`;
@@ -308,9 +316,10 @@ const DexExpenses = (() => {
     root.innerHTML = `<div class="expense-month-control">${button(text('Mes anterior', 'Previous month'), 'chevron-left', `data-expense-step="-1" ${position === 0 ? 'disabled' : ''}`)}<button type="button" class="expense-month" id="expense-month" data-month="${month}" aria-haspopup="dialog" aria-label="${text('Mes de gastos', 'Spending month')}: ${escapeHTML(monthName(month))}"><span>${escapeHTML(monthName(month))}</span>${icon('chevron-down')}</button>${button(text('Mes siguiente', 'Next month'), 'chevron-right', `data-expense-step="1" ${position === available.length - 1 ? 'disabled' : ''}`)}</div><div class="expense-card-rail" role="group" aria-label="${text('Tarjetas de cr\u00e9dito', 'Credit cards')}">${cards.map((card, index) => cardMarkup(card, index, value)).join('')}</div>
       <section class="expense-overview" aria-label="${text('Resumen del mes', 'Monthly overview')}"><div class="expense-ring-wrap"><canvas id="expense-ring" width="264" height="264" role="img" aria-label="${text(hiddenAmounts ? 'Importes ocultos' : 'Gastos por categor\u00eda', hiddenAmounts ? 'Amounts hidden' : 'Spending by category')}"></canvas><div class="expense-ring-center"><button type="button" id="expense-reset" aria-label="${text('Mostrar total del mes', 'Show monthly total')}" title="${text('Mostrar total del mes', 'Show monthly total')}"><span class="caption">${text('Gasto registrado', 'Recorded spending')}</span><span id="expense-total" class="sensitive">${headlineAmount(sum(rows))}</span><span class="expense-count">${countLabel(rows.length)}</span></button><div class="segmented expense-currency" role="group" aria-label="${text('Moneda de gastos', 'Spending currency')}">${['CRC', 'USD'].map(unit => `<button type="button" data-expense-currency="${unit}" aria-pressed="${unit === denomination}">${unit}</button>`).join('')}</div></div></div><div class="expense-meta"><span class="expense-source">${escapeHTML([...new Set(statements.map(statement => statement.issuer))].join(' \u00b7 ') || text('Sin informe', 'No statement'))}</span><button type="button" class="expense-coverage" id="expense-coverage" ${selectedCards.length ? '' : 'disabled'}>${icon(covered ? 'calendar-check' : 'circle-alert')}${text(!selectedCards.length ? 'Sin selecci\u00f3n' : covered ? 'Per\u00edodo cubierto' : 'Mes parcial', !selectedCards.length ? 'No selection' : covered ? 'Period covered' : 'Partial month')}${icon('chevron-right')}</button></div><div class="expense-breakdown">${taxes ? `<span>${text('IVA y cargos', 'Tax & fees')}<strong>${amount(taxes)}</strong></span>` : ''}${refunds ? `<span>${text('Devoluciones', 'Refunds')}<strong>${amount(refunds)}</strong></span>` : ''}</div></section>
       <div class="expense-browser"><div class="expense-views" role="group" aria-label="${text('Agrupar gastos', 'Group expenses')}">${[['categories', text('Categor\u00edas', 'Categories')], ['merchants', text('Comercios', 'Merchants')], ['transactions', text('Movimientos', 'Transactions')]].map(([key, label]) => `<button type="button" data-expense-mode="${key}" aria-pressed="${mode === key}">${label}</button>`).join('')}</div>${button(text('Buscar gastos', 'Search spending'), 'search', `id="expense-search-toggle" aria-expanded="${searching}" aria-controls="expense-search-box"`)}</div>
-      <label id="expense-search-box" class="search expense-search" ${searching ? '' : 'hidden'}>${icon('search')}<input id="expense-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="${text('Buscar comercio o movimiento', 'Search merchant or transaction')}" aria-label="${text('Buscar gastos', 'Search spending')}" value="${escapeHTML(query)}"></label><div class="expense-ledger" tabindex="0" role="region" aria-label="${text('Detalle de gastos', 'Spending details')}"><div class="expense-analysis"><button type="button" id="expense-compare" ${selectedCards.length ? '' : 'disabled'}>${icon('chart-no-axes-combined')}${text('Comparar', 'Compare')}</button><button type="button" id="expense-recurring" ${selectedCards.length ? '' : 'disabled'}>${icon('repeat')}${text('Recurrentes', 'Recurring')}</button></div>${reviewMarkup(value)}<div id="expense-results"></div></div>`;
+      <label id="expense-search-box" class="search expense-search" ${searching ? '' : 'hidden'}>${icon('search')}<input id="expense-search" type="search" autocomplete="off" enterkeyhint="search" placeholder="${text('Buscar comercio o movimiento', 'Search merchant or transaction')}" aria-label="${text('Buscar gastos', 'Search spending')}" value="${escapeHTML(query)}"></label><div class="expense-ledger" role="region" aria-label="${text('Detalle de gastos', 'Spending details')}"><div class="expense-analysis"><button type="button" id="expense-compare" ${selectedCards.length ? '' : 'disabled'}>${icon('chart-no-axes-combined')}${text('Comparar', 'Compare')}</button><button type="button" id="expense-recurring" ${selectedCards.length ? '' : 'disabled'}>${icon('repeat')}${text('Recurrentes', 'Recurring')}</button></div>${reviewMarkup(value)}<div id="expense-results"></div></div>`;
     all('[data-expense-card]').forEach(control => control.addEventListener('click', () => {
       const card = control.dataset.expenseCard;
+      root.style.minHeight = `${root.getBoundingClientRect().height}px`;
       selectedCards = selectedCards.includes(card) ? selectedCards.filter(id => id !== card) : [...selectedCards, card];
       selection = null;
       query = '';
@@ -405,6 +414,13 @@ const DexExpenses = (() => {
       bindDetails(container, selection);
     }
   }
-  window.addEventListener('resize', fitTotal);
+  window.addEventListener('resize', () => {
+    if (innerWidth !== layoutWidth) {
+      const root = select('#expenses-content');
+      if (root) root.style.minHeight = '';
+      layoutWidth = innerWidth;
+    }
+    fitTotal();
+  });
   return {render, detail, grouped, coverage, months, compareMonths, enter};
 })();
