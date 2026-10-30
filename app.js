@@ -597,7 +597,7 @@ function render() {
   renderSummary(); renderAccounts(); renderSettings(); renderPrivacy(); renderAdjustments(); renderPayroll(); renderHistory(); renderPerformance(); renderMarket(); renderAutomation(); setNotice();
   DexPlan.render();
   DexExpenses.render();
-  if (currentDetail && !['adjustment', 'salary', 'planning'].includes(currentDetail.kind) && select('#detail').open) renderDetail(currentDetail);
+  if (currentDetail && !['adjustment', 'salary', 'planning', 'fire'].includes(currentDetail.kind) && select('#detail').open) renderDetail(currentDetail);
   icons();
   if (Portal.enabled) {
     all('[data-new-adjustment], #salary-setting').forEach(button => { button.disabled = !snapshot.remote_editing?.enabled; });
@@ -1302,6 +1302,8 @@ function renderDetail(detail) {
     DexExpenses.detail(detail.id);
   } else if (detail.kind === 'perspective') {
     renderPerspective();
+  } else if (detail.kind === 'fire') {
+    DexFire.form();
   } else if (detail.kind === 'planning') {
     DexPlan.form(detail.id);
   } else if (detail.kind === 'composition') {
@@ -1418,7 +1420,7 @@ function closeSheet() {
   DexNative.dismissSheet(() => { if (dialog.open) dialog.close(); });
 }
 function closeDetail() {
-  if (savingAdjustment || savingSalary || DexPlan.saving) return false;
+  if (savingAdjustment || savingSalary || DexPlan.saving || DexFire.saving) return false;
   closeSheet();
   return true;
 }

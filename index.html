@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://accounts.google.com/gsi/client; style-src 'self' https://accounts.google.com/gsi/style; img-src 'self' https://*.googleusercontent.com; connect-src 'self' https://sheets.googleapis.com https://accounts.google.com/gsi/ https://api.coinbase.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
-  <meta name="dex-build" content="0.9.0-expenses15">
+  <meta name="dex-build" content="0.9.0-fire1">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#000000">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -75,6 +75,7 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./portal.js" defer></script>
   <script src="./native.js" defer></script>
+  <script src="./fire.js" defer></script>
   <script src="./plan.js" defer></script>
   <script src="./expenses.js" defer></script>
   <script src="./app.js" defer></script>
@@ -199,6 +200,7 @@
     <div class="menu-header"><strong id="menu-heading">DEX</strong><button id="menu-close" class="icon-button" aria-label="Cerrar men&#250;" title="Cerrar men&#250;"><i data-lucide="x"></i></button></div>
     <nav aria-label="Secciones">
       <div class="menu-group">
+        <a href="#fire" data-plan-panel="fire"><i data-lucide="sunrise"></i>FIRE</a>
         <a href="#metas" data-plan-panel="goals"><i data-lucide="circle-check"></i>Metas</a>
         <a href="#calendario" data-plan-panel="calendar"><i data-lucide="calendar-days"></i>Calendario</a>
         <a href="#alertas" data-plan-panel="alerts"><i data-lucide="clock-3"></i>Alertas<span id="plan-alert-count" class="small-label"></span></a>

@@ -1,4 +1,65 @@
 /* DEX design system: dark, native iOS finance language (Wallet stack, Robinhood chart, Revolut groups). */
+.fire-dashboard { max-width: 760px; margin: 0 auto; min-width: 0; }
+.fire-toolbar { display: flex; gap: 12px; align-items: center; }
+.fire-scenarios { flex: 1; max-width: 360px; }
+.fire-dashboard .segmented { min-width: 0; }
+.fire-dashboard .segmented button { min-height: 44px; padding: 0 8px; }
+.fire-hero { padding: 26px 0 22px; border-bottom: 1px solid var(--sep); }
+.fire-hero h2 { font: 650 32px/1.2 var(--font-display); letter-spacing: 0; margin: 12px 0 6px; overflow-wrap: anywhere; }
+.fire-hero .subtle { margin: 0; }
+.fire-progress { display: flex; gap: 14px; align-items: center; margin-top: 20px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.fire-progress progress { width: 100%; height: 5px; border: 0; border-radius: 3px; overflow: hidden; background: var(--fill); accent-color: var(--tint); }
+.fire-progress progress::-webkit-progress-bar { background: var(--fill); }
+.fire-progress progress::-webkit-progress-value { background: var(--tint); }
+.fire-progress progress::-moz-progress-bar { background: var(--tint); }
+.fire-condition, .fire-warning { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.5; margin: 14px 0 0; color: var(--label-2); }
+.fire-condition svg, .fire-warning svg { flex: 0 0 18px; width: 18px; height: 18px; margin-top: 2px; }
+.fire-warning { color: var(--down); margin: 18px 0; }
+.fire-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-height: 80px; font-size: 14px; }
+.fire-stepper { display: flex; align-items: center; gap: 0; margin-right: auto; }
+.fire-stepper input { width: 48px; padding: 8px 0; text-align: center; border: 0; border-radius: 0; font-size: 17px; background: transparent; color: var(--label); appearance: textfield; }
+.fire-stepper input::-webkit-inner-spin-button, .fire-stepper input::-webkit-outer-spin-button { appearance: none; }
+.fire-units { width: 108px; flex: none; }
+.fire-finance { margin: 0 0 16px; }
+.fire-chart-wrap { margin: 0 -4px 20px; }
+.fire-chart-caption { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 4px; flex-wrap: wrap; }
+.fire-chart-caption span { font-size: 12px; color: var(--label-2); }
+.fire-chart-caption strong { font: 600 20px/1.3 var(--font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; max-width: 100%; }
+#fire-chart { display: block; width: 100%; height: 250px; touch-action: pan-y pinch-zoom; }
+.fire-chart-legend { display: flex; gap: 10px 16px; flex-wrap: wrap; font-size: 11px; color: var(--label-2); padding: 6px 4px; }
+.fire-chart-legend span { display: flex; align-items: center; gap: 6px; }
+.fire-chart-legend i { width: 12px; height: 3px; background: var(--tint); }
+.fire-chart-legend .fire-target-dot { background: var(--orange); }
+.fire-chart-legend .fire-reference-dot { background: var(--label-3); }
+.fire-chart-range { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; font-size: 11px; color: var(--label-2); }
+.fire-chart-range .segmented { width: 178px; }
+.fire-chart-range button { font-size: 12px; }
+.fire-metrics, .fire-comparison { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; border-top: 1px solid var(--sep); }
+.fire-metric { min-width: 0; padding: 18px 0; border-bottom: 1px solid var(--sep); display: grid; gap: 8px; align-content: start; }
+.fire-metric span { font-size: 12px; color: var(--label-2); }
+.fire-metric strong { font: 600 21px/1.25 var(--font-display); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; letter-spacing: 0; }
+.fire-section { padding: 20px 0; border-bottom: 1px solid var(--sep); min-width: 0; }
+.fire-section .section-heading { flex-wrap: wrap; }
+.fire-section h3 { display: flex; align-items: center; gap: 8px; font-size: 18px; margin: 0; }
+.fire-section h3 svg { width: 20px; height: 20px; }
+.fire-section .detail-line > strong { max-width: 52%; overflow-wrap: anywhere; text-align: right; }
+.fire-section .subtle { font-size: 12px; line-height: 1.6; margin-bottom: 0; }
+.fire-section summary { font-size: 14px; min-height: 44px; cursor: pointer; padding-top: 12px; }
+.fire-footnote { color: var(--label-3); font-size: 11px; padding: 16px 0 32px; line-height: 1.6; }
+.fire-setup { padding: 32px 0 60px; }
+.fire-setup h2 { font-size: 28px; line-height: 1.2; }
+.fire-symbol svg { width: 44px; height: 44px; color: var(--tint); }
+.fire-setup .primary-action { margin-top: 28px; }
+#detail-content:has(> #fire-form) { grid-template-columns: minmax(0, 1fr); }
+#fire-form .form-columns { align-items: start; }
+#fire-form label { min-width: 0; }
+#fire-form input { min-width: 0; max-width: 100%; font-size: 16px; }
+@media (max-width: 359px) {
+  .fire-controls > label { flex-basis: 100%; }
+  .fire-hero h2 { font-size: 28px; }
+  .fire-metric strong { font-size: 18px; }
+  #fire-form .form-columns { grid-template-columns: minmax(0, 1fr); }
+}
 :root {
   color-scheme: dark;
   --bg: #000;

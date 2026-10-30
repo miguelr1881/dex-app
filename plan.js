@@ -9,7 +9,7 @@ const DexPlan = (() => {
   let reportPeriod = '';
   let reportMode = 'month';
   let lastReport = null;
-  const routes = {plan: ['goals', 'Metas'], metas: ['goals', 'Metas'], calendario: ['calendar', 'Calendario'], comparar: ['history', 'Comparar fechas'], mensual: ['reports', 'Resumen mensual'], anual: ['annual', 'Ficha anual'], alertas: ['alerts', 'Alertas']};
+  const routes = {fire: ['fire', 'FIRE'], plan: ['goals', 'Metas'], metas: ['goals', 'Metas'], calendario: ['calendar', 'Calendario'], comparar: ['history', 'Comparar fechas'], mensual: ['reports', 'Resumen mensual'], anual: ['annual', 'Ficha anual'], alertas: ['alerts', 'Alertas']};
   function route(target) {
     const destination = routes[target];
     if (!destination) return null;
@@ -208,6 +208,7 @@ const DexPlan = (() => {
     select('#plan-alert-count').textContent = notices.length ? String(notices.length) : '';
     select('#plan-status').textContent = Portal.enabled && snapshot.remote_editing?.requests?.some(item => item.kind === 'planning' && item.state === 'pending') ? 'Cambio de plan pendiente de aplicar en la ejecuci\u00f3n diaria.' : snapshot.demo ? 'Plan de demostraci\u00f3n' : '';
     const container = select('#plan-content');
+    if (panel === 'fire') { DexFire.render(); return; }
     container.innerHTML = panel === 'goals' ? renderGoals() : panel === 'calendar' ? renderCalendar() : panel === 'history' ? renderHistory() : ['reports', 'annual'].includes(panel) ? renderReports() : `<div class="section-heading"><h2>Alertas</h2>${action('Configurar alertas', 'settings', 'data-plan-new="alerts"')}</div>${caption('Avisos dentro de DEX. No se env\u00edan notificaciones con la app cerrada.')}${notices.map(item => `<div class="agenda-row"><div><h3 data-no-translate>${escapeHTML(item.name)}</h3><p class="subtle">${escapeHTML(item.text)}</p></div></div>`).join('') || caption(plan().alerts.enabled ? 'Sin avisos pendientes.' : 'Alertas desactivadas.')}`;
     icons();
   }

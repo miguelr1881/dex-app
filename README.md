@@ -1,6 +1,6 @@
 # DEX Web
 
-Build: 0.9.0-expenses15. GitHub Pages interface with optional encrypted summary reading.
+Build: 0.9.0-fire1. GitHub Pages interface with optional encrypted summary reading.
 The private daily workflow publishes only data/dex-snapshot.json (AES-256-GCM).
 Never upload a decryption key, credentials, private source or plaintext financial data.
 
@@ -15,6 +15,14 @@ unpaired reading. Tokens remain in memory. Signing out of Google keeps device
 reading; Forget device removes the local key and encrypted copy.
 Edit requests wait for the daily writer or a manual private workflow run.
 Public ciphertext may remain in Git history; key rotation cannot revoke old copies.
+
+FIRE uses current selected net worth without assumed future contributions. House
+cash/mortgage scenarios are illustrative, not financial advice. Restricted ROP
+is shown separately, never automatically released at a given age.
+FIRE assumptions are encrypted locally in dex-fire-v1, separately from pairing.
+They are not synced or included in the financial backup. The non-exportable key
+shares browser storage: this protects neither against an unlocked device nor
+malicious same-origin code. Clearing browser storage also removes these settings.
 
 Configure Pages from main/root. The private repository requires DEX_SNAPSHOT_KEY,
 DEX_PUBLIC_DEPLOY_KEY (SSH deploy key, write access only to this repository), and
