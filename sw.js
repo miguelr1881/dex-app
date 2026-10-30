@@ -1,5 +1,5 @@
 'use strict';
-const CACHE = 'dex-pages-shell-0.9.0-fire1';
+const CACHE = 'dex-pages-shell-0.9.0-fire2';
 const IMAGES = 'dex-pages-images-v1';
 const SHELL = ["./", "./index.html", "./portal.css", "./manifest.webmanifest", "./brand-ibkr.png", "./card-bac-lifemiles.png", "./card-bac-amex-blue.png", "./dex.css", "./app.js", "./fire.js", "./plan.js", "./expenses.js", "./native.js", "./i18n.js", "./sheets-reader.js", "./snapshot.js", "./portal.js", "./icons.js", "./brand-bac.svg", "./brand-multimoney.svg", "./brand-binance.svg", "./icon.png", "./icon-512.png", "./apple-touch-icon.png"].map(path => new URL(path, self.registration.scope).href);
 const INDEX = new URL('./index.html', self.registration.scope).href;

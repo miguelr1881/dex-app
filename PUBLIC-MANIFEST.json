@@ -2,7 +2,7 @@
   "files_sha256": {
     ".nojekyll": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "LUCIDE-LICENSE": "1e7290b35280a048667bbf0ebabac1c7fd52a75300e8b2946ac165715997f2bc",
-    "README.md": "3e21a674b270172d8bdb64c80e5a2b96097cbb2490c65a6dae057e4efb7c7edf",
+    "README.md": "ff48dd9af45425295fecf542a68defb5c0e52d218d63c0db964cb87bd33ebd9b",
     "app.js": "65016a8f4e9e7078e0b87878f2b2a2c5611d40c7de2bd125bce28eb48bb1fdf0",
     "apple-touch-icon.png": "019b1971f80a357bb47f645499ed3dca007e6df48891203bba4dbc397c21914c",
     "brand-bac.svg": "32493e55da7ac457658c384a78286699e898a62669c54dad2b9f674a3376e744",
@@ -19,8 +19,8 @@
     "icon-maskable-192.png": "40658e6bf44f62eeccebc22166e79933bdd1f974e965124a3959efdb09c535f7",
     "icon-maskable-512.png": "b57c8139e290bf2eb359ec7603a88a25221bb6b42b836f295fe6dba63d4372c1",
     "icon.png": "ed556b6aa6225550bbbb3b75323963e84db6ac2ca47171f0d03d2ae89fd0371b",
-    "icons.js": "545b2edcf9081fa3deb40d1989c1399ec5a94648f4d57cb08dab05805e90d17c",
-    "index.html": "d05cd07ca08cd3ee29e5393fd944c35ee715c0b944295e36925f357ace02fc0a",
+    "icons.js": "2faa61ba71150aed758ff038628f54ecd1586fde715eaa5f459db7fa08cd3d89",
+    "index.html": "28f701e9c3aff5f5a58df6f9aa9f195c9c0d70c172de8e2776078398d5d5e859",
     "manifest.webmanifest": "0c5eb00981062e234584ac994ff48d9e315b2a272cafa0aac39361dd13609212",
     "native.js": "32f5356b4df09a87e7382b7c4ceab9604f0456f4df63a90bd412fa337c14d459",
     "plan.js": "b8fb5e13b2aa5bd87e63db72a10dd280dcaafcfee59f62a68988434e920c69a0",
@@ -76,7 +76,7 @@
     "splash/launch-640x1136.png": "f7227801c0137bb34ce57c54c1f910bab05320cdb14798a05f691e7ad56a37e0",
     "splash/launch-750x1334.png": "79b396f28790e7e0b86f5ef0f4cfea41e38433fe8c9cf96d723a8e424acbee16",
     "splash/launch-828x1792.png": "2a16d11dff970a9e5466f0acf785ad1db27c49a369f58dce1c16ecfb6c6ad7de",
-    "sw.js": "1a1950deb469c6e8e495214ea355ae01c4f439b4ed3e692357d2e3fd5c0ab0c5"
+    "sw.js": "41bb7881e403a1416cee6c8635765cf0cbae38b394c097b72775db28e89fc095"
   },
   "contains_private_data": false,
   "scope": "interface_only"
